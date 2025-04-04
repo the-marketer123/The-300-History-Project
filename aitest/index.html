@@ -52,7 +52,17 @@
     // Load Troops
     //console.log(GLTFLoader)
     const loader = new THREE.GLTFLoader();
-
+    function addOrbit (camera, element=renderer.domElement) {
+        const orbitControls = new OrbitControls(camera, element);// originally renderer.domElement
+        orbitControls.enableDamping = true
+        orbitControls.minDistance = 0.01
+        orbitControls.maxDistance = 1500
+        orbitControls.enablePan = false
+        orbitControls.maxPolarAngle = Math.PI / 2 - 0.05
+        orbitControls.update();
+        orbits.push(orbitControls);
+        camera.orbitNum = orbits.length - 1;
+    }
     function loadTroop(modelPath, count, baseX, baseZ, spacing, isEnemy = false) {
       loader.load(modelPath, gltf => {
         for (let i = 0; i < count; i++) {
@@ -89,6 +99,7 @@
     animate();
 
     // Handle resize
+    addOrbit(camera)
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
