@@ -186,32 +186,28 @@
                     // Title Text
                     ui_ctx.shadowColor = "rgba(255, 223, 186, 0.8)";
                     ui_ctx.shadowBlur = 20;
-                    ui_ctx.font = "80px 'Pirata One', serif";
+                    ui_ctx.font = "150px 'Pirata One', serif";
                     ui_ctx.fillStyle = `rgba(0, 0, 0, ${titleAlpha})`;
                     ui_ctx.textAlign = "center";
                     ui_ctx.textBaseline = "middle";
-                    ui_ctx.fillText("300 - The Game", uiCanvas.width / 2, uiCanvas.height / 3);
+                    ui_ctx.fillText("The 300", uiCanvas.width / 2, uiCanvas.height / 6);
+                    ui_ctx.font = "50px 'Pirata One', serif";
+                    ui_ctx.fillText("The Game", uiCanvas.width / 2, uiCanvas.height / 6 + 100);
 
                     // Begin button animation
                     beginButton.targetScale = beginButton.hovered ? 1.05 : 1;
                     beginButton.scale += (beginButton.targetScale - beginButton.scale) * 0.1;
 
                     const btnW = beginButton.width * beginButton.scale;
-                    const btnH = beginButton.height * beginButton.scale;
+                    const btnH = beginButton.height * beginButton.scale + 100;
                     beginButton.x = uiCanvas.width / 2 - btnW / 2;
                     beginButton.y = uiCanvas.height / 2;
 
                     // Draw the button
                     ui_ctx.shadowBlur = beginButton.hovered ? 20 : 0;
                     ui_ctx.shadowColor = "#00ffff";
-                    ui_ctx.beginPath();
-                    ui_ctx.roundRect(beginButton.x, beginButton.y, btnW, btnH, 15);
-                    ui_ctx.fillStyle = beginButton.hovered ? "#00f0ff" : "#0077cc";
-                    ui_ctx.fill();
-
-                    // Button text
-                    ui_ctx.font = "bold 26px sans-serif";
-                    ui_ctx.fillStyle = "#ffffff";
+                    ui_ctx.font = "bold " + (beginButton.scale * 50) + "px 'Pirata One', serif";
+                    ui_ctx.fillStyle = `rgba(0, 0, 0, ${titleAlpha})`;
                     ui_ctx.textAlign = "center";
                     ui_ctx.textBaseline = "middle";
                     ui_ctx.fillText("Begin", uiCanvas.width / 2, beginButton.y + btnH / 2);
@@ -232,7 +228,7 @@
                     const my = e.clientY - rect.top;
 
                     const btnW = beginButton.width * beginButton.scale;
-                    const btnH = beginButton.height * beginButton.scale;
+                    const btnH = beginButton.height * beginButton.scale + 100;
                     const bx = uiCanvas.width / 2 - btnW / 2;
                     const by = uiCanvas.height / 2;
 
@@ -243,7 +239,7 @@
                 });
 
                 uiCanvas.addEventListener("click", () => {
-                    if (gameStarted) return;
+                    if (gameStarted || titleAlpha < 1) return;
 
                     if (beginButton.hovered) {
                         gameStarted = true;
@@ -253,7 +249,7 @@
                         audio.play();
 
                         // Show background
-                        document.body.style.backgroundImage = "url('assets/title_background.webp')";
+                        document.body.style.backgroundImage = "url('assets/title_background.png')";
                         document.body.style.backgroundRepeat = "no-repeat";
                         document.body.style.backgroundSize = "cover";
                         document.body.style.backgroundAttachment = "fixed";
@@ -272,6 +268,82 @@
                 pirateFont.rel = "stylesheet";
                 document.head.appendChild(pirateFont);
 
+            /*world*/
+             let world = (function(out){
+                out.r = { // rapier
+
+                }
+                out.t = { // threejs
+
+                }
+                out.f = {
+                    constrain: function(x,a,b){
+                            
+                        return x<a ? a : x>b ? b : x
+                    },
+                    
+                    deg: function(x){
+                        
+                        return x*57.29577951
+                    },
+                    
+                    rad: function(x){
+                        
+                        return a*0.01745329252
+                    }
+                }
+
+                
+                out.k= // keys
+                (function(controls){ 
+                    controls.mouseX=controls.mouseY=0
+                    controls.mousePressed=controls.mouseClicked=false
+                    controls.keysHeld={}
+                    controls.keysPressed={}
+                    controls.shift=false
+
+                    uiCanvas.onmousemove=function(e){
+                        controls.mouseX+=e.movementX
+                        controls.mouseY+=e.movementY
+                    }
+                    
+                    uiCanvas.onmousedown=function(){
+                        if (!controls.mousePressed) { 
+                            controls.mouseClicked = true; // ✅ Trigger only on the first press
+                        }
+                        controls.mousePressed=true
+                    }
+                    
+                    uiCanvas.onmouseup=function(){
+                        controls.mousePressed=false
+                    }
+                    
+                    document.onkeydown=function(e){
+                        if (   controls.keysHeld[e.code.toString()] !== true   ) {
+
+                            controls.keysPressed[e.code.toString()]=true
+
+                        } else {
+
+                            controls.keysPressed[e.code.toString()]=false
+
+                        }
+
+                        controls.keysHeld[e.code.toString()]=true
+                    }
+                    
+                    document.onkeyup=function(e){
+                        controls.keysHeld[e.code.toString()]=false
+                    }
+                    controls.update = function() {
+                        controls.keysPressed={}
+                        controls.mouseClicked=false
+                    }
+                                            
+                    return controls
+                    
+                })({})
+             })({})
             /*draw*/
             function draw() {
                 ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
