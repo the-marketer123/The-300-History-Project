@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>300 - The Game</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script><!--J Query-->
+        <script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js'></script><!--GL Matrix-->
+        <style>
+            body {
+                    
+                margin:0;
+                overflow:hidden;
+                font-family:trebuchet ms;
+            }
+        </style>
+    </head>
+    
+    <body>
+        <script type="importmap">
+            {
+                "imports": {
+                "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.172.0/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/",
+                "@dimforge/rapier3d-compat": "https://cdn.skypack.dev/@dimforge/rapier3d-compat"
+                }
+            }
+        </script>
+        <canvas id="ui-canvas"></canvas>
+        <script type="module">
+            import * as THREE from 'three';
+            import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+            import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+            import { Sky } from 'three/addons/objects/Sky.js';
+            import  Stats  from 'three/addons/libs/stats.module.js'
+            const RAPIER = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.11.2');
+            await RAPIER.init();
+
+            let uiCanvas=document.getElementById('ui-canvas')
+            let ui_ctx=uiCanvas.getContext('2d')
+            uiCanvas.width = window.innerWidth
+            uiCanvas.height = window.innerHeight
+
+        </script>            
+        <img src='assets/title_background.webp'>        
+    </body>
+</html>
