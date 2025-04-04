@@ -8,16 +8,10 @@
         <script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js'></script><!--GL Matrix-->
         <style>
             body {
-                    
-                margin:0;
-                overflow:hidden;
-                font-family:trebuchet ms;
-
-                background-image: url('assets/title_background.webp');
-                background-repeat: no-repeat;
-                background-size: cover;
-                background-attachment: fixed;
-
+                margin: 0;
+                overflow: hidden;
+                font-family: Trebuchet MS;
+                background-color: black; /* Black screen before start */
             }
 
             #ui-canvas {
@@ -42,7 +36,8 @@
 
         <!--<img id="titlebackground" src='assets/title_background.webp'>-->
         <canvas id="ui-canvas"></canvas>
-        <audio autoplay loop id="title_song">
+
+        <audio autoplay loop muted id="title_song">
             <source src="assets/title_song.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
         </audio>
@@ -58,9 +53,240 @@
 
             let uiCanvas=document.getElementById('ui-canvas')
             let ui_ctx=uiCanvas.getContext('2d')
-            uiCanvas.width = window.innerWidth
-            uiCanvas.height = window.innerHeight
+            function resizeCanvas() {
+                uiCanvas.width = window.innerWidth;
+                uiCanvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
 
+
+            /*Start Button*/
+                let showStartButton = true;
+                const startbutton = {
+                    x: uiCanvas.width / 2 - 100,
+                    y: uiCanvas.height / 2 - 30,
+                    width: 200,
+                    height: 60,
+                    text: 'START',
+                    hovered: false
+                };
+
+                // Draw loop
+                function drawStartButton() {
+                    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+
+                    // Update startbutton position in case of resize
+                    startbutton.x = uiCanvas.width / 2 - 100;
+                    startbutton.y = uiCanvas.height / 2 - 30;
+
+                    // startbutton background
+                    ui_ctx.beginPath();
+                    ui_ctx.roundRect(startbutton.x, startbutton.y, startbutton.width, startbutton.height, 15);
+                    ui_ctx.fillStyle = startbutton.hovered ? '#00f0ff' : '#0077cc';
+                    ui_ctx.fill();
+
+                    // startbutton glow
+                    if (startbutton.hovered) {
+                    ui_ctx.shadowColor = '#00ffff';
+                    ui_ctx.shadowBlur = 20;
+                    } else {
+                    ui_ctx.shadowBlur = 0;
+                    }
+
+                    // startbutton text
+                    ui_ctx.font = 'bold 24px sans-serif';
+                    ui_ctx.fillStyle = '#ffffff';
+                    ui_ctx.textAlign = 'center';
+                    ui_ctx.textBaseline = 'middle';
+                    ui_ctx.fillText(startbutton.text, uiCanvas.width / 2, uiCanvas.height / 2);
+
+                    //requestAnimationFrame(drawStartButton);
+                }
+
+                // Mouse detection
+                uiCanvas.addEventListener("mousemove", (e) => {
+                    if (!showStartButton) return;
+
+                    const rect = uiCanvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+
+                    startbutton.hovered = (
+                        mx >= startbutton.x && mx <= startbutton.x + startbutton.width &&
+                        my >= startbutton.y && my <= startbutton.y + startbutton.height
+                    );
+                });
+
+
+                // Click to start music and remove canvas
+                uiCanvas.addEventListener("click", () => {
+                    if (showStartButton && startbutton.hovered) {
+                        const audio = document.getElementById("title_song");
+                        audio.muted = false;
+                        audio.play();
+
+                        // Set background image
+                        document.body.style.backgroundImage = "url('assets/title_background.png')";
+                        document.body.style.backgroundRepeat = "no-repeat";
+                        document.body.style.backgroundSize = "cover";
+                        document.body.style.backgroundAttachment = "fixed";
+
+                        // Disable the start button (but keep canvas)
+                        showStartButton = false;
+
+                        // Optional: trigger game start or something here
+                    }
+                });
+
+
+                // RoundRect polyfill for older browsers
+                if (!CanvasRenderingContext2D.prototype.roundRect) {
+                    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+                    if (typeof r === 'number') r = { tl: r, tr: r, br: r, bl: r };
+                    this.beginPath();
+                    this.moveTo(x + r.tl, y);
+                    this.lineTo(x + w - r.tr, y);
+                    this.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+                    this.lineTo(x + w, y + h - r.br);
+                    this.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+                    this.lineTo(x + r.bl, y + h);
+                    this.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+                    this.lineTo(x, y + r.tl);
+                    this.quadraticCurveTo(x, y, x + r.tl, y);
+                    this.closePath();
+                    return this;
+                    };
+                }
+
+                drawStartButton();
+            /*Title*/
+                let titleText = "The 300";
+                let subtitleText = "The Game";
+                let startText = "Begin";
+                let titleAlpha = 0; // Controls fade-in effect
+                let titleFadeSpeed = 0.02; // Adjust this for faster/slower fade-in
+
+                let gameStarted = false;
+
+
+                const beginButton = {
+                    x: 0,
+                    y: 0,
+                    width: 200,
+                    height: 60,
+                    hovered: false,
+                    scale: 1,
+                    targetScale: 1
+                };
+                // Function to draw the title
+                function drawTitle() {
+                    ui_ctx.save();
+
+                    // Title Text
+                    ui_ctx.shadowColor = "rgba(255, 223, 186, 0.8)";
+                    ui_ctx.shadowBlur = 20;
+                    ui_ctx.font = "80px 'Pirata One', serif";
+                    ui_ctx.fillStyle = `rgba(0, 0, 0, ${titleAlpha})`;
+                    ui_ctx.textAlign = "center";
+                    ui_ctx.textBaseline = "middle";
+                    ui_ctx.fillText("300 - The Game", uiCanvas.width / 2, uiCanvas.height / 3);
+
+                    // Begin button animation
+                    beginButton.targetScale = beginButton.hovered ? 1.05 : 1;
+                    beginButton.scale += (beginButton.targetScale - beginButton.scale) * 0.1;
+
+                    const btnW = beginButton.width * beginButton.scale;
+                    const btnH = beginButton.height * beginButton.scale;
+                    beginButton.x = uiCanvas.width / 2 - btnW / 2;
+                    beginButton.y = uiCanvas.height / 2;
+
+                    // Draw the button
+                    ui_ctx.shadowBlur = beginButton.hovered ? 20 : 0;
+                    ui_ctx.shadowColor = "#00ffff";
+                    ui_ctx.beginPath();
+                    ui_ctx.roundRect(beginButton.x, beginButton.y, btnW, btnH, 15);
+                    ui_ctx.fillStyle = beginButton.hovered ? "#00f0ff" : "#0077cc";
+                    ui_ctx.fill();
+
+                    // Button text
+                    ui_ctx.font = "bold 26px sans-serif";
+                    ui_ctx.fillStyle = "#ffffff";
+                    ui_ctx.textAlign = "center";
+                    ui_ctx.textBaseline = "middle";
+                    ui_ctx.fillText("Begin", uiCanvas.width / 2, beginButton.y + btnH / 2);
+
+                    ui_ctx.restore();
+
+                    // Fade in
+                    if (titleAlpha < 1) {
+                        titleAlpha += titleFadeSpeed;
+                    }
+                }
+
+                uiCanvas.addEventListener("mousemove", (e) => {
+                    if (gameStarted) return;
+
+                    const rect = uiCanvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+
+                    const btnW = beginButton.width * beginButton.scale;
+                    const btnH = beginButton.height * beginButton.scale;
+                    const bx = uiCanvas.width / 2 - btnW / 2;
+                    const by = uiCanvas.height / 2;
+
+                    beginButton.hovered = (
+                        mx >= bx && mx <= bx + btnW &&
+                        my >= by && my <= by + btnH
+                    );
+                });
+
+                uiCanvas.addEventListener("click", () => {
+                    if (gameStarted) return;
+
+                    if (beginButton.hovered) {
+                        gameStarted = true;
+
+                        const audio = document.getElementById("title_song");
+                        audio.muted = false;
+                        audio.play();
+
+                        // Show background
+                        document.body.style.backgroundImage = "url('assets/title_background.webp')";
+                        document.body.style.backgroundRepeat = "no-repeat";
+                        document.body.style.backgroundSize = "cover";
+                        document.body.style.backgroundAttachment = "fixed";
+
+                        // Optional: trigger next scene, hide UI etc
+                    }
+                });
+
+
+
+
+
+                // Load the pirate-style font dynamically
+                const pirateFont = document.createElement("link");
+                pirateFont.href = "https://fonts.googleapis.com/css2?family=Pirata+One&display=swap";
+                pirateFont.rel = "stylesheet";
+                document.head.appendChild(pirateFont);
+
+            /*draw*/
+            function draw() {
+                ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+
+
+                if (showStartButton) {
+                    drawStartButton();
+                } else {
+                    drawTitle();
+                }
+
+
+                requestAnimationFrame(draw);
+            }
+            draw()
         </script>            
     </body>
 </html>
