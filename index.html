@@ -12,6 +12,18 @@
                 margin:0;
                 overflow:hidden;
                 font-family:trebuchet ms;
+
+                background-image: url('assets/title_background.webp');
+                background-repeat: no-repeat;
+                background-size: cover;
+                background-attachment: fixed;
+
+            }
+
+            #ui-canvas {
+                
+                position:fixed;
+                z-index:-1;
             }
         </style>
     </head>
@@ -26,7 +38,15 @@
                 }
             }
         </script>
+
+
+        <!--<img id="titlebackground" src='assets/title_background.webp'>-->
         <canvas id="ui-canvas"></canvas>
+        <audio autoplay loop id="title_song">
+            <source src="assets/title_song.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+
         <script type="module">
             import * as THREE from 'three';
             import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
@@ -42,6 +62,5 @@
             uiCanvas.height = window.innerHeight
 
         </script>            
-        <img src='assets/title_background.webp'>        
     </body>
 </html>
