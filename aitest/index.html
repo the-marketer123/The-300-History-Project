@@ -52,6 +52,7 @@
     // Load Troops
     //console.log(GLTFLoader)
     const loader = new THREE.GLTFLoader();
+    let orbits=[]
     function addOrbit (camera, element=renderer.domElement) {
         const orbitControls = new OrbitControls(camera, element);// originally renderer.domElement
         orbitControls.enableDamping = true
