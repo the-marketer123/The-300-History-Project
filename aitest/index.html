@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Battle of Thermopylae - Three.js</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script>
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb); // Sky blue
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 15, 40);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Lighting
+    const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+    sun.position.set(50, 100, 50);
+    scene.add(sun);
+    scene.add(new THREE.AmbientLight(0x404040)); // soft fill light
+
+    // Terrain (mountains and pass)
+    const terrain = new THREE.Mesh(
+      new THREE.PlaneGeometry(100, 100, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0x8b7d6b, flatShading: true })
+    );
+    terrain.rotation.x = -Math.PI / 2;
+    scene.add(terrain);
+
+    // Mountains (just simplified shapes)
+    function addMountain(x, z, size) {
+      const geometry = new THREE.ConeGeometry(size, size * 2, 6);
+      const material = new THREE.MeshStandardMaterial({ color: 0x555555 });
+      const mountain = new THREE.Mesh(geometry, material);
+      mountain.position.set(x, size, z);
+      scene.add(mountain);
+    }
+
+    addMountain(-40, 0, 20);
+    addMountain(40, 0, 20);
+
+    // Load Troops
+    //console.log(GLTFLoader)
+    const loader = new THREE.GLTFLoader();
+
+    function loadTroop(modelPath, count, baseX, baseZ, spacing, isEnemy = false) {
+      loader.load(modelPath, gltf => {
+        for (let i = 0; i < count; i++) {
+          const clone = gltf.scene.clone();
+          const row = Math.floor(i / 10);
+          const col = i % 10;
+          clone.position.set(baseX + col * spacing, 0, baseZ + row * spacing * (isEnemy ? 1 : -1));
+          clone.scale.set(1.5, 1.5, 1.5);
+          scene.add(clone);
+        }
+      });
+    }
+
+    // Spartans (Greeks)
+    loadTroop('models/spartan_model/scene.gltf', 50, -10, 10, 2);
+
+    // Persians
+    loadTroop('models/spartan_model/scene.gltf', 100, -10, -20, 2, true);
+
+    // Sea
+    const sea = new THREE.Mesh(
+      new THREE.PlaneGeometry(100, 30),
+      new THREE.MeshStandardMaterial({ color: 0x1e90ff })
+    );
+    sea.rotation.x = -Math.PI / 2;
+    sea.position.z = -50;
+    scene.add(sea);
+
+    // Animate
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
