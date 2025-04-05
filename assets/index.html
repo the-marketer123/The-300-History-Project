@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Load FBX in Three.js</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <!-- Include Three.js and the FBXLoader -->
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/FBXLoader.js"></script>-->
+    <script type="importmap">
+        {
+            "imports": {
+            "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.172.0/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/",
+            "@dimforge/rapier3d-compat": "https://cdn.skypack.dev/@dimforge/rapier3d-compat"
+            }
+        }
+    </script>
+    <script type="module">
+        // Scene setup
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { Sky } from 'three/addons/objects/Sky.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Set up lighting
+        const light = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(light);
+
+        // Load the FBX model
+        const loader = new FBXLoader();
+        loader.load('tents\viking_tent_001\mesh\highpoly_viking_tent_001.fbx', function (object) {
+            scene.add(object);
+
+            // Optional scaling or adjustments
+            object.scale.set(0.1, 0.1, 0.1);
+
+            // Start the animation loop after model is loaded
+            animate();
+        });
+
+        // Camera position
+        camera.position.z = 5;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+</html>
