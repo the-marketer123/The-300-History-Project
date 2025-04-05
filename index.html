@@ -51,7 +51,6 @@
             import  Stats  from 'three/addons/libs/stats.module.js'
             const RAPIER = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.11.2');
             await RAPIER.init();
-            console.log(GLTFLoader)
 
             let uiCanvas=document.getElementById('ui-canvas')
             let ui_ctx=uiCanvas.getContext('2d')
@@ -251,10 +250,16 @@
                         audio.play();
 
                         // Show background
+                        /*
                         document.body.style.backgroundImage = "url('assets/title_background.png')";
                         document.body.style.backgroundRepeat = "no-repeat";
                         document.body.style.backgroundSize = "cover";
                         document.body.style.backgroundAttachment = "fixed";
+                        */
+                        document.body.style.backgroundColor = "black";
+
+
+                        index.v.scene = 'play'
 
                         // Optional: trigger next scene, hide UI etc
                     }
@@ -270,20 +275,20 @@
                 pirateFont.rel = "stylesheet";
                 document.head.appendChild(pirateFont);
             /*play*/
-            let setup = (function(out){
-                out.mountains = function(){
+                let setup = (function(out){
+                    out.mountains = function(){
 
-                }
-                out.sea = function(){
+                    }
+                    out.sea = function(){
 
+                    }
+                    out.camp = function(){
+                        
+                    }
+                return out })({})
+                function play (){
+                    index.t.renderer.render(index.t.scene,index.t.camera)
                 }
-                out.camp = function(){
-                    
-                }
-            return out })({})
-            function play (){
-
-            }
             /*index*/
                 let loader = new GLTFLoader();
                 let index = (function(out){
@@ -315,9 +320,10 @@
                         out.scene= new THREE.Scene(),
 
                         out.camera= new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 5000 )
+                        out.scene.add(out.camera)
 
-                        out.renderer= new THREE.WebGLRenderer({ antialias: true }).setSize( innerWidth, innerHeight )
-
+                        out.renderer = new THREE.WebGLRenderer({ antialias: true });
+                        out.renderer.setSize(innerWidth, innerHeight);                        
                         out.createSkybox= function(angle) {
                             const sky = new Sky();
                             sky.scale.setScalar( 450000 );
@@ -412,7 +418,6 @@
                         
                      })({})
                 return out })({})
-                console.log(index )
             /*draw*/
             function draw() {
                 ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
@@ -422,7 +427,7 @@
                     drawStartButton();
                 } else if (index.v.scene === 'title'){
                     drawTitle();
-                } else {
+                } else if (index.v.scene === 'play' ){
                     play();
                 }
 
