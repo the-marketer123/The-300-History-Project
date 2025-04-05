@@ -248,20 +248,11 @@
                         const audio = document.getElementById("title_song");
                         audio.muted = false;
                         audio.play();
-
-                        // Show background
-                        /*
-                        document.body.style.backgroundImage = "url('assets/title_background.png')";
-                        document.body.style.backgroundRepeat = "no-repeat";
-                        document.body.style.backgroundSize = "cover";
-                        document.body.style.backgroundAttachment = "fixed";
-                        */
+                        
+                        document.body.style.backgroundImage = 'none';
                         document.body.style.backgroundColor = "black";
 
-
                         index.v.scene = 'play'
-
-                        // Optional: trigger next scene, hide UI etc
                     }
                 });
 
