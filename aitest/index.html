@@ -12,8 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+  <script type="importmap">
+    {
+        "imports": {
+          "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.172.0/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/",
+          "@dimforge/rapier3d-compat": "https://cdn.skypack.dev/@dimforge/rapier3d-compat"
+        }
+    }
+</script>
   <script>
     // Scene setup
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb); // Sky blue
 
