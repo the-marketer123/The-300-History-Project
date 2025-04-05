@@ -7,18 +7,22 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script><!--J Query-->
         <script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js'></script><!--GL Matrix-->
         <style>
-            body {
-                margin: 0;
-                overflow: hidden;
-                font-family: Trebuchet MS;
-                background-color: black; /* Black screen before start */
+            canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                display: block;
             }
 
-            #ui-canvas {
-                
-                position:fixed;
-                z-index:-1;
+            #threeCanvas {
+                z-index: 0;
             }
+
+            #uiCanvas {
+                z-index: 1;
+                pointer-events: auto;
+            }
+
         </style>
     </head>
     
@@ -266,6 +270,7 @@
                 pirateFont.rel = "stylesheet";
                 document.head.appendChild(pirateFont);
             /*play*/
+                let gameBegun = false
                 let setup = (function(out){
                     out.mountains = function(){
 
@@ -277,7 +282,20 @@
                         
                     }
                 return out })({})
+                function startGame() {
+                    if (!gameBegun) {
+                        //document.body.appendChild(index.t.renderer.domElement);
+
+                        setup.mountains()
+                        setup.sea()
+                        setup.camp()
+
+                        index.t.createSkybox()
+                    }
+                    gameBegun = true
+                }
                 function play (){
+                    startGame()
                     index.t.renderer.render(index.t.scene,index.t.camera)
                 }
             /*index*/
@@ -313,12 +331,48 @@
                         out.camera= new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 5000 )
                         out.scene.add(out.camera)
 
+                        out.camera.position.set(5,5,5)
+                        out.camera.lookAt(0,0,0)
+
                         out.renderer = new THREE.WebGLRenderer({ antialias: true });
-                        out.renderer.setSize(innerWidth, innerHeight);                        
+                        out.renderer.setSize(innerWidth, innerHeight); 
+                        document.body.appendChild(out.renderer.domElement);
+                        uiCanvas.id = "uiCanvas";
+                        out.renderer.domElement.id = "threeCanvas";
+                        document.body.appendChild(uiCanvas); // this ensures it's on top
+
+
+                        out.scene.fog = new THREE.Fog( out.scene.background, 1, 5000 );
+
+                        out.hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2 );
+                        out.hemiLight.color.setHSL( 0.6, 1, 0.6 );
+                        out.hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+                        out.hemiLight.position.set( 0, 50, 0 );
+                        out.scene.add( out.hemiLight );
+                        
+                        out.dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
+                        out.dirLight.color.setHSL( 0.1, 1, 0.95 );
+                        out.dirLight.position.set( - 1, 1.75, 1 );
+                        out.dirLight.position.multiplyScalar( 30 );
+                        out.scene.add( out.dirLight );
+
+                        out.dirLight.castShadow = true;
+                        out.dirLight.shadow.mapSize.width = 2048;
+                        out.dirLight.shadow.mapSize.height = 2048;
+
+                        const d = 50;
+
+                        out.dirLight.shadow.camera.left =   - d;
+                        out.dirLight.shadow.camera.right =    d;
+                        out.dirLight.shadow.camera.top =      d;
+                        out.dirLight.shadow.camera.bottom = - d;
+                        out.dirLight.shadow.camera.far =   3500;
+                        out.dirLight.shadow.bias =     - 0.0001;
+                        
                         out.createSkybox= function(angle) {
                             const sky = new Sky();
                             sky.scale.setScalar( 450000 );
-
+                            let pi = Math.PI;
                             const phi = angle * pi/180//MathUtils.degToRad( 90 );
                             const theta = 180 * pi/180//MathUtils.degToRad( 180 );
                             const sunPosition = new THREE.Vector3().setFromSphericalCoords( 10, phi, theta );
