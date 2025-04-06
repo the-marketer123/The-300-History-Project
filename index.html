@@ -48,6 +48,7 @@
 
         <script type="module">
             import * as THREE from 'three';
+            import { Water } from 'three/addons/objects/Water.js';
             import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
             import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
             import { Sky } from 'three/addons/objects/Sky.js';
@@ -273,13 +274,71 @@
                 let gameBegun = false
                 let setup = (function(out){
                     out.mountains = function(){
+                        const loader = new THREE.TextureLoader();
+                        loader.load('assets/mountainsheightmap.png', (heightmap) => {
+                        const geometry = new THREE.PlaneGeometry(5000, 1000, 256, 256);
+                        geometry.rotateX(-Math.PI / 2); // make it flat
 
+                        const vertices = geometry.attributes.position.array;
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const img = heightmap.image;
+
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+
+                        const data = ctx.getImageData(0, 0, img.width, img.height).data;
+
+                        for (let i = 0; i < geometry.attributes.position.count; i++) {
+                            const x = i % img.width;
+                            const y = Math.floor(i / img.width);
+                            const index = (y * img.width + x) * 4;
+                            const brightness = data[index]; // red channel is fine
+                            vertices[i * 3 + 1] = brightness * 5; // scale height
+                        }
+
+                        geometry.computeVertexNormals();
+
+                        const material = new THREE.MeshStandardMaterial({ color: 0x888888, wireframe: false });
+                        const terrain = new THREE.Mesh(geometry, material);
+                        terrain.position.y = -30
+                        index.t.scene.add(terrain);
+                        });
                     }
                     out.sea = function(){
+                        const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
 
+                        const waterNormals = new THREE.TextureLoader().load('assets/waternormals.jpg', (texture) => {
+                        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                        });
+                        waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
+                        waterNormals.repeat.set(10, 10);
+
+                        out.water = new Water(waterGeometry, {
+                        textureWidth: 2048,
+                        textureHeight: 2048,
+                        waterNormals: waterNormals,
+                        sunDirection: new THREE.Vector3(),
+                        sunColor: 0xffffff,
+                        waterColor: 0x001e0f,
+                        distortionScale: 4,
+                        fog: false,
+                        format: THREE.RGBAFormat,
+                        distortionScale: 8000,
+                        waterColor: 0x00080f, // deep blue-black
+                        sunColor: 0x666666,   // overcast lighting                        
+                    });
+                   
+                        out.water.rotation.x = -Math.PI / 2;      
+                        out.water.position.y = -500                  
+                        index.t.scene.add(out.water);
                     }
                     out.camp = function(){
                         
+                    }
+                    out.update = function(){
+                        out.water.material.uniforms['time'].value += 1.0 / 60.0;                    
                     }
                 return out })({})
                 function startGame() {
@@ -290,18 +349,29 @@
                         setup.sea()
                         setup.camp()
 
-                        index.t.createSkybox()
+                        index.t.createSkybox(0)
                     }
+                    setup.update()
+                    
                     gameBegun = true
                 }
                 function play (){
                     startGame()
                     index.t.renderer.render(index.t.scene,index.t.camera)
+
+                    if (index.v.playscene = "camp"){
+
+                    } else if (index.v.playscene = "day1"){
+
+                    } else if (index.v.playscene = "day2"){
+
+                    } else if (index.v.playscene = "day3"){
+
+                    }
                 }
             /*index*/
-                let loader = new GLTFLoader();
-                let index = (function(out){
-                    out.r = (function(out){ // rapier
+                let index = {
+                    r : (function(out){ // rapier
                         out.world= new RAPIER.World({ x: 0.0, y: -9.81, z: 0.0 })
 
                         out.addPhysicsToMesh= function(mesh,physics=true){
@@ -325,7 +395,7 @@
                      return out })({})
                         
                     
-                    out.t = (function(out){ //threejs
+                   ,t : (function(out){ //threejs
                         out.scene= new THREE.Scene(),
 
                         out.camera= new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 5000 )
@@ -380,12 +450,25 @@
                             sky.material.uniforms.sunPosition.value = sunPosition;
 
                             out.scene.add( sky );
-                        }
 
+                        }
+                        out.orbits = [];
+                        out.addOrbit = function(camera, element=out.renderer.domElement){
+                            const orbitControls = new OrbitControls(camera, element);// originally renderer.domElement
+                            orbitControls.enableDamping = true
+                            orbitControls.minDistance = 0.01
+                            orbitControls.maxDistance = 150000
+                            orbitControls.enablePan = true
+                            //orbitControls.maxPolarAngle = Math.PI / 2 - 0.05
+                            orbitControls.update();
+                            out.orbits.push(orbitControls);
+                            camera.orbitNum = out.orbits.length - 1;
+                        }
+                        out.addOrbit(out.camera,uiCanvas)
 
 
                      return out })({})
-                    out.f = (function(out){ //functions
+                   ,f : (function(out){ //functions
                         out.constrain= function(x,a,b){
                             return x<a ? a : x>b ? b : x
                         }
@@ -398,6 +481,8 @@
                             return a*0.01745329252
                         }
                         out.loadModel= function(path){
+                            let loader = new GLTFLoader();
+
                             loader.load(path, gltf => {
                                 const clone = gltf.scene.clone();
                                 return clone;
@@ -410,11 +495,12 @@
                             
                         }
                      return out })({})
-                    out.v = (function(out){ // variables
+                   ,v : (function(out){ // variables
                         out.scene = 'title'
+                        out.playscene = "camp"
                      return out })({})
                     
-                    out.k = (function(controls){ //keys
+                   ,k : (function(controls){ //keys
                         controls.mouseX=controls.mouseY=0
                         controls.mousePressed=controls.mouseClicked=false
                         controls.keysHeld={}
@@ -462,8 +548,13 @@
                         return controls
                         
                      })({})
-                return out })({})
+                }
             /*draw*/
+            
+            const geometry = new THREE.BoxGeometry();
+            const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+            const cube = new THREE.Mesh(geometry, material);
+            index.t.scene.add(cube);
             function draw() {
                 ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
