@@ -278,12 +278,44 @@
                         let loader = new GLTFLoader();
 
                         loader.load('assets/mountainrange.glb', gltf => {
-                            const clone = gltf.scene.clone();
+                            const clone1 = gltf.scene.clone();
+                            const clone2 = gltf.scene.clone();
+                            const clone3 = gltf.scene.clone();
+                            const clone4 = gltf.scene.clone();
+                            const clone5 = gltf.scene.clone();
 
                             let rotVector = new THREE.Vector3(0,0,0)
-                            clone.rotation.setFromVector3(rotVector)
+                            let yoff = -5.225
+                            clone1.rotation.setFromVector3(rotVector)
+                            clone1.scale.set(50, 50, 50)
+                            clone1.position.y = yoff   
+                            clone1.position.x = 0   
 
-                            index.t.scene.add(clone)
+                            clone2.rotation.setFromVector3(rotVector)
+                            clone2.scale.set(50, 50, 50)
+                            clone2.position.y = yoff   
+                            clone2.position.x = -1700   
+
+                            clone3.rotation.setFromVector3(rotVector)
+                            clone3.scale.set(50, 50, 50)
+                            clone3.position.y = yoff   
+                            clone3.position.x = 1700 
+
+                            clone4.rotation.setFromVector3(rotVector)
+                            clone4.scale.set(50, 50, 50)
+                            clone4.position.y = yoff 
+                            clone4.position.x = -3400 
+
+                            clone5.rotation.setFromVector3(rotVector)
+                            clone5.scale.set(50, 50, 50)
+                            clone5.position.y = yoff
+                            clone5.position.x = 3400
+
+                            index.t.scene.add(clone1)
+                            index.t.scene.add(clone2)
+                            index.t.scene.add(clone3)
+                            index.t.scene.add(clone4)
+                            index.t.scene.add(clone5)
                         });
 
                         
@@ -347,7 +379,7 @@
                     });
                    
                         out.water.rotation.x = -Math.PI / 2;      
-                        out.water.position.y = -127                  
+                        out.water.position.y = -200                  
                         index.t.scene.add(out.water);
                     }
                     out.camp = function(){
