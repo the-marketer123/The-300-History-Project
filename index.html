@@ -274,9 +274,24 @@
                 let gameBegun = false
                 let setup = (function(out){
                     out.mountains = function(){
+
+                        let loader = new GLTFLoader();
+
+                        loader.load('assets/mountainrange.glb', gltf => {
+                            const clone = gltf.scene.clone();
+
+                            let rotVector = new THREE.Vector3(0,0,0)
+                            clone.rotation.setFromVector3(rotVector)
+
+                            index.t.scene.add(clone)
+                        });
+
+                        
+
+                        /*
                         const loader = new THREE.TextureLoader();
                         loader.load('assets/mountainsheightmap.png', (heightmap) => {
-                        const geometry = new THREE.PlaneGeometry(5000, 1000, 256, 256);
+                        const geometry = new THREE.PlaneGeometry(5000, 500, 512, 512);
                         geometry.rotateX(-Math.PI / 2); // make it flat
 
                         const vertices = geometry.attributes.position.array;
@@ -295,16 +310,17 @@
                             const y = Math.floor(i / img.width);
                             const index = (y * img.width + x) * 4;
                             const brightness = data[index]; // red channel is fine
-                            vertices[i * 3 + 1] = brightness * 5; // scale height
+                            vertices[i * 3 + 1] = brightness ; // scale height
                         }
 
                         geometry.computeVertexNormals();
 
-                        const material = new THREE.MeshStandardMaterial({ color: 0x888888, wireframe: false });
+                        const material = new THREE.MeshStandardMaterial({ color: 0x888888, wireframe: false, side: THREE.DoubleSide });
                         const terrain = new THREE.Mesh(geometry, material);
-                        terrain.position.y = -30
+                        terrain.position.y = -127
                         index.t.scene.add(terrain);
                         });
+                        */
                     }
                     out.sea = function(){
                         const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
@@ -331,7 +347,7 @@
                     });
                    
                         out.water.rotation.x = -Math.PI / 2;      
-                        out.water.position.y = -500                  
+                        out.water.position.y = -127                  
                         index.t.scene.add(out.water);
                     }
                     out.camp = function(){
