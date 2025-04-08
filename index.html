@@ -54,6 +54,7 @@
             import { Sky } from 'three/addons/objects/Sky.js';
             import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
             import  Stats  from 'three/addons/libs/stats.module.js'
+            import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
             const RAPIER = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.11.2');
             await RAPIER.init();
 
@@ -65,6 +66,10 @@
             }
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
+            function random(a,b){
+                
+                return Math.random()*(b-a)+a
+            }
 
 
             /*Start Button*/
@@ -382,8 +387,72 @@
                         out.water.position.y = -200                  
                         index.t.scene.add(out.water);
                     }
+                    out.camp_meshes = new THREE.Group()
                     out.camp = function(){
-                        
+                        const loader = new FBXLoader();
+
+                        loader.load('assets/tents/viking_tent_001/mesh/highpoly_viking_tent_001.fbx', fbx => {
+                            function campcircle(centerX,centerY,centerZ){
+                                loader.load('assets/firepit.fbx', fbx => {
+                                    let firepit = fbx.clone();
+                                    console.log(firepit)
+                                    firepit.position.set(centerX,centerY-0.5,centerZ)
+                                    firepit.scale.set(1/35,1/35,1/35)
+                                    out.camp_meshes.add(firepit)
+                                });
+
+                                const fireColor = new THREE.Color(0xff6b2b); // warm orange
+                                const fireLight = new THREE.PointLight(fireColor, 5, 10); // color, intensity, distance
+                                fireLight.position.set(centerX, centerY+1, centerZ); // slightly above the firepit
+                                out.camp_meshes.add(fireLight);
+
+                                let clones = []
+                                for (var i = 0;i<5;i++){
+                                    clones.push(fbx.clone())
+                                }
+
+                                for (var i = 0; i < clones.length; i++){
+                                    const radius = 10
+                                    const angle = (i / 5) * Math.PI * 2;
+                                    const x = Math.cos(angle) * radius;
+                                    const z = Math.sin(angle) * radius;
+                                    clones[i].position.set(x+centerX, 0+centerY, z+centerZ);
+
+                                    // Make it face the center
+                                    clones[i].lookAt(centerX, centerY, centerZ);
+
+                                    out.camp_meshes.add(clones[i]);
+                                }
+                            }
+                            campcircle(0,0,0)
+                            
+                            campcircle(-30,0,30)
+                            campcircle(-30,0,-30)
+                            campcircle(30,0,-30)
+                            campcircle(30,0,30) 
+
+                            campcircle(-30,0,0)
+                            campcircle(30,0,0)
+                            campcircle(0,0,-30)
+                            campcircle(0,0,30)
+
+                            for (var i = 0; i < 10; i++){
+                                //campcircle(random(-100,200),0,random(-200,200))
+                            }
+
+
+                            let angle = 180
+                            let pi = Math.PI;
+                            const phi = angle * pi/180//MathUtils.degToRad( 90 );
+                            const theta = 180 * pi/180//MathUtils.degToRad( 180 );
+                            const sunPosition = new THREE.Vector3().setFromSphericalCoords( 10, phi, theta );
+
+                            out.sky.material.uniforms.sunPosition.value = sunPosition;        
+                            
+                            index.t.hemiLight.intensity = 0.2
+                            index.t.dirLight.intensity = 0.2
+                        });
+                        index.t.scene.add(out.camp_meshes)
                     }
                     out.update = function(){
                         out.water.material.uniforms['time'].value += 1.0 / 60.0;                    
@@ -391,13 +460,12 @@
                 return out })({})
                 function startGame() {
                     if (!gameBegun) {
-                        //document.body.appendChild(index.t.renderer.domElement);
 
+                        setup.sky = index.t.createSkybox(0);
                         setup.mountains()
                         setup.sea()
                         setup.camp()
 
-                        index.t.createSkybox(0)
                     }
                     setup.update()
                     
@@ -498,6 +566,7 @@
                             sky.material.uniforms.sunPosition.value = sunPosition;
 
                             out.scene.add( sky );
+                            return sky;
 
                         }
                         out.orbits = [];
