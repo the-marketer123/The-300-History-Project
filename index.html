@@ -480,7 +480,7 @@
                     index.t.renderer.render(index.t.scene,index.t.camera)
 
                     if (index.v.playscene = "camp"){
-
+                        index.f.spawnSpartan(0,5,0)
                     } else if (index.v.playscene = "day1"){
 
                     } else if (index.v.playscene = "day2"){
@@ -601,7 +601,7 @@
                         out.rad= function(x){
                             return a*0.01745329252
                         }
-                        out.loadModel= function(path){
+                        out.loadModelGLTF= function(path){
                             let loader = new GLTFLoader();
 
                             loader.load(path, gltf => {
@@ -609,11 +609,70 @@
                                 return clone;
                             });
                         }
+                        out.FBXRigs = []
+                        out.loadRigFBX = function(url, x, y, z, scale = 0.01,customID='') {
+                            const loader = new THREE.FBXLoader();
+                            const density = 20;
+                            const radius = 0.25;
+
+                            // Physics
+                            const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+                                .setTranslation(x, y, z)
+                                .setCanSleep(true);
+                            const rigid = world.createRigidBody(rigidBodyDesc);
+                            const colliderDesc = RAPIER.ColliderDesc.ball(radius).setDensity(density);
+                            const collider = world.createCollider(colliderDesc, rigid);
+                            rigid.wakeUp();
+                            collider.userData = { id: "fbx_rig" + customID };
+
+                            let num = FBXRigs.length;
+
+                            loader.load(url, (model) => {
+                                model.scale.set(scale, scale, scale);
+
+                                // Optional: Look for animations
+                                let mixer = null;
+                                if (model.animations && model.animations.length > 0) {
+                                    mixer = new THREE.AnimationMixer(model);
+                                    const action = mixer.clipAction(model.animations[0]);
+                                    action.play();
+                                }
+
+                                // Add to scene
+                                scene.add(model);
+
+                                // Physics update loop
+                                function update(delta) {
+                                    if (rigid !== undefined) {
+                                        rigid.resetForces(true);
+                                        const { x, y, z } = rigid.translation();
+                                        const rot = rigid.rotation();
+                                        const xr = rot.x, yr = rot.y, zr = rot.z, wr = rot.w;
+
+                                        model.position.set(x, y, z);
+                                        model.quaternion.set(xr, yr, zr, wr);
+
+                                        if (mixer) mixer.update(delta);
+
+                                        if (y < -100) {
+                                            world.removeRigidBody(rigid);
+                                            scene.remove(model);
+                                            FBXRigs[num] = undefined;
+                                        }
+                                    }
+                                }
+
+                                FBXRigs.push({ mesh: model, rigid, colliderDesc, update });
+                                return { mesh: model, rigid, colliderDesc, update };
+                            });
+
+                            // Return stub so it's immediately usable
+                        }
                         out.spawnSpartan= function(x,y,z){
-                            
+                            let rig = loadRigFBX('assets/trojan3.fbx',x,y,z,1,"_spartan")
                         }
                         out.spawnPersian= function(x,y,z){
-                            
+                            let rig = loadRigFBX('assets/achilles.fbx',x,y,z,1,"_persian")
                         }
                      return out })({})
                    ,v : (function(out){ // variables
@@ -692,15 +751,6 @@
                 requestAnimationFrame(draw);
             }
             draw()
-        </script>     
-        <script>
-            if ("serviceWorker" in navigator) {
-              window.addEventListener("load", () => {
-                navigator.serviceWorker.register("service-worker.js")
-                  .then(() => console.log("Service Worker registered!"))
-                  .catch(err => console.error("Service Worker error:", err));
-              });
-            }
-        </script>         
+        </script>          
     </body>
 </html>
