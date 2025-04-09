@@ -362,7 +362,7 @@
                         index.t.scene.add(terrain);
                         });
                         */
-                    }
+                     }
                     out.sea = function(){
                         const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
 
@@ -385,12 +385,12 @@
                         distortionScale: 8000,
                         waterColor: 0x00080f, // deep blue-black
                         sunColor: 0x666666,   // overcast lighting                        
-                    });
-                   
-                        out.water.rotation.x = -Math.PI / 2;      
-                        out.water.position.y = -200                  
-                        index.t.scene.add(out.water);
-                    }
+                        });
+                    
+                            out.water.rotation.x = -Math.PI / 2;      
+                            out.water.position.y = -200                  
+                            index.t.scene.add(out.water);
+                     }
                     out.camp_meshes = new THREE.Group()
                     out.camp = function(){
                         const loader = new FBXLoader();
@@ -457,10 +457,10 @@
                             index.t.dirLight.intensity = 0.2
                         });
                         index.t.scene.add(out.camp_meshes)
-                    }
+                     }
                     out.update = function(){
                         out.water.material.uniforms['time'].value += 1.0 / 60.0;                    
-                    }
+                     }
                 return out })({})
                 function startGame() {
                     if (!gameBegun) {
@@ -592,15 +592,15 @@
                    ,f : (function(out){ //functions
                         out.constrain= function(x,a,b){
                             return x<a ? a : x>b ? b : x
-                        }
+                         }
                         
                         out.deg= function(x){
                             return x*57.29577951
-                        }
+                         }
                         
                         out.rad= function(x){
                             return a*0.01745329252
-                        }
+                         }
                         out.loadModelGLTF= function(path){
                             let loader = new GLTFLoader();
 
@@ -608,7 +608,7 @@
                                 const clone = gltf.scene.clone();
                                 return clone;
                             });
-                        }
+                         }
                         out.FBXRigs = []
                         out.loadRigFBX = function(url, x, y, z, scale = 0.01,customID='') {
                             const loader = new THREE.FBXLoader();
@@ -661,7 +661,7 @@
                                         }
                                     }
                                 }
-
+                                console.log(model)
                                 FBXRigs.push({ mesh: model, rigid, colliderDesc, update });
                                 return { mesh: model, rigid, colliderDesc, update };
                             });
