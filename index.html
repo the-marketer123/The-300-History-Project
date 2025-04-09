@@ -399,7 +399,6 @@
                             function campcircle(centerX,centerY,centerZ){
                                 loader.load('assets/firepit.fbx', fbx => {
                                     let firepit = fbx.clone();
-                                    console.log(firepit)
                                     firepit.position.set(centerX,centerY-0.5,centerZ)
                                     firepit.scale.set(1/35,1/35,1/35)
                                     out.camp_meshes.add(firepit)
