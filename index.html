@@ -725,11 +725,11 @@
 				let target;
 				function getTarget(){
 					let targ = {}
-					let locations = []
+					let distances
 					out.persians.forEach(persian => {
-						locations.push(persian.mesh.position)
-						
+						distances.push({ dist: persian.mesh.position.distanceTo(index.t.camera.position), persian: persian})
 					})
+					
 					return targ
 				}
 				
