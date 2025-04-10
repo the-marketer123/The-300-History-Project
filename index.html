@@ -719,10 +719,30 @@
                                 });
                             });
                         };
-
+			out.spartans = []
                         out.spawnSpartan= function(x,y,z){
                             let rig = out.loadRigFBX('assets/trojan3.fbx',x,y,z,0.025,"_spartan")
+				let target;
+				function getTarget(){
+					let targ = {}
+					let locations = []
+					out.persians.forEach(persian => {
+						locations.push(persian.mesh.position)
+						
+					})
+					return targ
+				}
+				
+				function update(){
+					rig.update();
+					if (!target.assigned) {
+						target = getTarget()
+					}
+					rig.mesh.lookAt(target.pos)
+				}
+				return {rig, update}
                         }
+			out.persians=[]
                         out.spawnPersian= function(x,y,z){
                             let rig = out.loadRigFBX('assets/achilles.fbx',x,y,z,0.025,"_persian")
                         }
