@@ -729,6 +729,12 @@
 					out.persians.forEach(persian => {
 						distances.push({ dist: persian.mesh.position.distanceTo(index.t.camera.position), persian: persian})
 					})
+					let lowestDist = Math.min(...distances)
+					distances.forEach(dist => {
+						if (dist.dist === lowestDist){
+							targ = dist.persian.mesh
+						}
+					})
 					
 					return targ
 				}
@@ -738,7 +744,8 @@
 					if (!target.assigned) {
 						target = getTarget()
 					}
-					rig.mesh.lookAt(target.pos)
+					rig.mesh.lookAt(target.position)
+					
 				}
 				return {rig, update}
                         }
