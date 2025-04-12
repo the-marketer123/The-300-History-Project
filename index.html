@@ -465,8 +465,8 @@
                         setup.mountains()
                         setup.sea()
                         setup.camp()
-                        index.f.spawnSpartan(-1,0,0)
-                        index.f.spawnPersian(1,0,0)
+                        index.f.spawnNPC(-1,0,0,'spartan')
+                        index.f.spawnNPC(1,0,0,'persian')
 
                     }
                     setup.update()
@@ -701,7 +701,6 @@
                                             const rot = rigid.rotation();
                                             wrapper.position.set(x, y, z);
                                             wrapper.quaternion.set(rot.x, rot.y, rot.z, rot.w);
-                                            model.position.x += 1
 
                                             if (mixer) mixer.update(delta);
 
@@ -714,83 +713,88 @@
 
                                         const rig = { mesh: wrapper, rigid, colliderDesc, update };
                                         out.FBXRigs.push(rig);
-                                        resolve({rig,update}); // ✅ return the rig when it's ready
+                                        resolve(rig); // ✅ return the rig when it's ready
                                     },
                                     undefined,
                                     (err) => reject(err)
                                 );
                             });
                         };
+                        out.spartans = [], out.persians = []
+                        out.spawnNPC = async function(x,y,z,nation){
+                            let rig;
+                            if (nation == 'spartan'){
+                                rig = await out.loadRigFBX('assets/trojan3.fbx',x,y,z,0.025,"_spartan")
+                            } else if (nation == 'persian'){
+                                rig = await out.loadRigFBX('assets/achilles.fbx',x,y,z,0.025,"_persian")
+                            }
 
-			            out.spartans = []
-                        out.spawnSpartan= async function(x,y,z){
-                            let rig = await out.loadRigFBX('assets/trojan3.fbx',x,y,z,0.025,"_spartan")
-                            console.log(rig)
                             function getTarget() {
                                 let closest = null;
                                 let closestDist = Infinity;
-
-                                out.persians.forEach(persian => {
-                                    console.log(persian.rig)
-                                    const dist = persian.rig.rig.mesh.position.distanceTo(new THREE.Vector3(x,y,z));
-                                    if (dist < closestDist) {
-                                        closestDist = dist;
-                                        closest = persian.rig.rig;
-                                    }
-                                });
-
+                                switch (nation) {                               
+                                    case'spartan':
+                                        out.persians.forEach(persian => {
+                                            console.log(persian.rig)
+                                            const dist = persian.rig.mesh.position.distanceTo(new THREE.Vector3(x,y,z));
+                                            if (dist < closestDist) {
+                                                closestDist = dist;
+                                                console.log(persian.rig.mesh.position)
+                                                closest = persian.rig;
+                                            }
+                                        }); 
+                                    break;
+                                    case 'persian':
+                                        out.spartans.forEach(spartan => {
+                                            const dist = spartan.rig.mesh.position.distanceTo(new THREE.Vector3(x,y,z));
+                                            if (dist < closestDist) {
+                                                closestDist = dist;
+                                                closest = spartan.rig;
+                                            }
+                                        });
+                                    break;
+                                }
                                 if (closest) {
                                     return { mesh: closest.mesh, assigned: true };
                                 }
                                 return {assigned:false}
+                                
                             }
-                            let target = getTarget()
+
+                            let stats = {
+                                target:getTarget(),
+                                dead:false,
+                                health:1,
+                                speed:0.1,
+                                target_pos: new THREE.Vector3()
+                            }
                             function update(){
-                                rig.rig.update();
-                                if (!target.assigned) {
-                                    target = getTarget()
+                                rig.update();
+                                if (!stats.target.assigned) {
+                                    stats.target = getTarget()
                                 } else {
-                                    console.log(target)
-                                    rig.rig.mesh.lookAt(target.mesh.position)
+                                    stats.target_pos = stats.target.mesh.position;
+
+
+                                    rig.mesh.lookAt(stats.target_pos)
+
+                                    //if (rig.mesh.position.x < stats.target_pos.x) {rig.mesh.position.x++}
+                                    //if (rig.mesh.position.x > stats.target_pos.x) {rig.mesh.position.x--}
+                                    //if (rig.mesh.position.Z < stats.target_pos.x) {rig.mesh.position.z++}
+                                    //if (rig.mesh.position.x > stats.target_pos.x) {rig.mesh.position.Z--}
                                 }
                                 
                             }
-                            out.spartans.push({rig,update})
+                            let dead = false;
+                            if (nation == 'spartan') {
+                                out.spartans.push({rig,update})
+                            } else if (nation == 'persian'){
+                                console.log(rig)
+                                out.persians.push({rig,update})
+                            }
                             return {rig, update}
                         }
-                        out.persians=[]
-                        out.spawnPersian= async function(x,y,z){
-                            let rig = await out.loadRigFBX('assets/achilles.fbx',x,y,z,0.025,"_persian")
-                            function getTarget() {
-                                let closest = null;
-                                let closestDist = Infinity;
-                                console.log(out.spartans)
-                                out.spartans.forEach(spartan => {
-                                    const dist = spartan.rig.rig.mesh.position.distanceTo(new THREE.Vector3(x,y,z));
-                                    if (dist < closestDist) {
-                                        closestDist = dist;
-                                        closest = spartan.rig.rig;
-                                    }
-                                });
-
-                                if (closest) {
-                                    return { mesh: closest.mesh, assigned: true };
-                                }
-                                return {assigned:false}
-                            }
-                            let target = getTarget()
-                            function update(){
-                                rig.rig.update();
-                                if (!target.assigned) {
-                                    target = getTarget()
-                                } else {
-                                    console.log(target)
-                                    rig.rig.mesh.lookAt(target.mesh.position)
-                                }
-                            }
-                            out.persians.push({rig,update})
-                            return {rig, update}
-                        }
+			            
                         
                      return out })({})
                    ,v : (function(out){ // variables
