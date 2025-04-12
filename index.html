@@ -327,37 +327,37 @@
                         
 
                         /*
-                        const loader = new THREE.TextureLoader();
-                        loader.load('assets/mountainsheightmap.png', (heightmap) => {
-                        const geometry = new THREE.PlaneGeometry(5000, 500, 512, 512);
-                        geometry.rotateX(-Math.PI / 2); // make it flat
+                            const loader = new THREE.TextureLoader();
+                            loader.load('assets/mountainsheightmap.png', (heightmap) => {
+                            const geometry = new THREE.PlaneGeometry(5000, 500, 512, 512);
+                            geometry.rotateX(-Math.PI / 2); // make it flat
 
-                        const vertices = geometry.attributes.position.array;
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const img = heightmap.image;
+                            const vertices = geometry.attributes.position.array;
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            const img = heightmap.image;
 
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        ctx.drawImage(img, 0, 0);
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
 
-                        const data = ctx.getImageData(0, 0, img.width, img.height).data;
+                            const data = ctx.getImageData(0, 0, img.width, img.height).data;
 
-                        for (let i = 0; i < geometry.attributes.position.count; i++) {
-                            const x = i % img.width;
-                            const y = Math.floor(i / img.width);
-                            const index = (y * img.width + x) * 4;
-                            const brightness = data[index]; // red channel is fine
-                            vertices[i * 3 + 1] = brightness ; // scale height
-                        }
+                            for (let i = 0; i < geometry.attributes.position.count; i++) {
+                                const x = i % img.width;
+                                const y = Math.floor(i / img.width);
+                                const index = (y * img.width + x) * 4;
+                                const brightness = data[index]; // red channel is fine
+                                vertices[i * 3 + 1] = brightness ; // scale height
+                            }
 
-                        geometry.computeVertexNormals();
+                            geometry.computeVertexNormals();
 
-                        const material = new THREE.MeshStandardMaterial({ color: 0x888888, wireframe: false, side: THREE.DoubleSide });
-                        const terrain = new THREE.Mesh(geometry, material);
-                        terrain.position.y = -127
-                        index.t.scene.add(terrain);
-                        });
+                            const material = new THREE.MeshStandardMaterial({ color: 0x888888, wireframe: false, side: THREE.DoubleSide });
+                            const terrain = new THREE.Mesh(geometry, material);
+                            terrain.position.y = -127
+                            index.t.scene.add(terrain);
+                            });
                         */
                      }
                     out.sea = function(){
@@ -465,11 +465,13 @@
                         setup.mountains()
                         setup.sea()
                         setup.camp()
-                        index.f.spawnSpartan(0,0,0)
+                        index.f.spawnSpartan(-1,0,0)
+                        index.f.spawnPersian(1,0,0)
 
                     }
                     setup.update()
-                    
+                    index.f.spartans.forEach(i => {i.update()} )
+                    index.f.persians.forEach(i => {i.update()} )
                     gameBegun = true
                 }
                 function play (){
@@ -646,63 +648,60 @@
                             });
                          }
                         out.FBXRigs = []
-                        out.loadRigFBX = function (url, x, y, z, scale = 0.01, customID = '') {
-                            return new Promise((resolve) => {
-                                const loader = new FBXLoader();
-                                const density = 20;
-                                const radius = 0.25;
+                        out.loadRigFBX = function(url, x, y, z, scale = 0.01, customID = '') {
+                            const loader = new FBXLoader();
+                            const density = 20;
+                            const radius = 0.25;
 
-                                // Physics setup
-                                const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
-                                    .setTranslation(x, y, z)
-                                    .setCanSleep(true);
-                                const rigid = index.r.world.createRigidBody(rigidBodyDesc);
-                                const colliderDesc = RAPIER.ColliderDesc.ball(radius).setDensity(density);
-                                const collider = index.r.world.createCollider(colliderDesc, rigid);
-                                rigid.wakeUp();
-                                collider.userData = { id: "fbx_rig" + customID };
+                            return new Promise((resolve, reject) => {
+                                loader.load(
+                                    url,
+                                    (model) => {
+                                        // Create physics body
+                                        const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+                                            .setTranslation(x, y, z)
+                                            .setCanSleep(true);
+                                        const rigid = index.r.world.createRigidBody(rigidBodyDesc);
+                                        const colliderDesc = RAPIER.ColliderDesc.ball(radius).setDensity(density);
+                                        const collider = index.r.world.createCollider(colliderDesc, rigid);
+                                        rigid.wakeUp();
+                                        collider.userData = { id: "fbx_rig" + customID };
 
-                                const num = out.FBXRigs.length;
+                                        const num = out.FBXRigs.length;
 
-                                loader.load(url, (model) => {
-                                    model.scale.set(scale, scale, scale);
+                                        // Setup model
+                                        model.scale.set(scale, scale, scale);
+                                        model.position.set(x, y, z);
 
-                                    // Recenter model to origin
-                                    model.traverse((child) => {
-                                        if (child.isMesh || child.isSkinnedMesh) {
-                                            child.geometry.computeBoundingBox();
-                                            const center = child.geometry.boundingBox.getCenter(new THREE.Vector3());
-                                            child.position.sub(center);
+                                        // Optional: Animation
+                                        let mixer = null;
+                                        if (model.animations && model.animations.length > 0) {
+                                            mixer = new THREE.AnimationMixer(model);
+                                            const action = mixer.clipAction(model.animations[0]);
+                                            action.play();
                                         }
-                                    });
-                                    const box = new THREE.Box3().setFromObject(model);
-                                    const center = new THREE.Vector3();
-                                    box.getCenter(center);
-                                    model.position.sub(center);
 
+                                        // Wrap for adjustment
+                                        const wrapper = new THREE.Group();
+                                        wrapper.add(model);
+                                        index.t.scene.add(wrapper);
 
-                                    // Wrap in a parent object to control positioning
-                                    const wrapper = new THREE.Group();
-                                    wrapper.add(model);
-                                    wrapper.position.set(x, y, z);
-                                    index.t.scene.add(wrapper);
+                                        // Recentering model based on bounding box
+                                        const box = new THREE.Box3().setFromObject(model);
+                                        const center = new THREE.Vector3();
+                                        box.getCenter(center);
+                                        model.position.sub(center); // shift so it's centered on wrapper
+                                        wrapper.position.set(x, y, z);
 
-                                    // Animation setup
-                                    let mixer = null;
-                                    if (model.animations && model.animations.length > 0) {
-                                        mixer = new THREE.AnimationMixer(model);
-                                        const action = mixer.clipAction(model.animations[0]);
-                                        action.play();
-                                    }
+                                        // Update function for syncing physics
+                                        function update(delta) {
+                                            if (!rigid) return;
 
-                                    // Update function (called per frame)
-                                    function update(delta) {
-                                        if (rigid !== undefined) {
-                                            rigid.resetForces(true);
                                             const { x, y, z } = rigid.translation();
                                             const rot = rigid.rotation();
                                             wrapper.position.set(x, y, z);
                                             wrapper.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+                                            model.position.x += 1
 
                                             if (mixer) mixer.update(delta);
 
@@ -712,51 +711,146 @@
                                                 out.FBXRigs[num] = undefined;
                                             }
                                         }
-                                    }
 
-                                    out.FBXRigs.push({ mesh: wrapper, rigid, colliderDesc, update });
-                                    resolve({ mesh: wrapper, rigid, colliderDesc, update });
-                                });
+                                        const rig = { mesh: wrapper, rigid, colliderDesc, update };
+                                        out.FBXRigs.push(rig);
+                                        resolve({rig,update}); // ✅ return the rig when it's ready
+                                    },
+                                    undefined,
+                                    (err) => reject(err)
+                                );
                             });
                         };
-			out.spartans = []
-                        out.spawnSpartan= function(x,y,z){
-                            let rig = out.loadRigFBX('assets/trojan3.fbx',x,y,z,0.025,"_spartan")
-				let target;
-				function getTarget(){
-					let targ = {}
-					let distances
-					out.persians.forEach(persian => {
-						distances.push({ dist: persian.mesh.position.distanceTo(index.t.camera.position), persian: persian})
-					})
-					let lowestDist = Math.min(...distances)
-					distances.forEach(dist => {
-						if (dist.dist === lowestDist){
-							targ = dist.persian.mesh
-						}
-					})
-					
-					return targ
-				}
-				
-				function update(){
-					rig.update();
-					if (!target.assigned) {
-						target = getTarget()
-					}
-					rig.mesh.lookAt(target.position)
-					
-				}
-				return {rig, update}
+
+			            out.spartans = []
+                        out.spawnSpartan= async function(x,y,z){
+                            let rig = await out.loadRigFBX('assets/trojan3.fbx',x,y,z,0.025,"_spartan")
+                            console.log(rig)
+                            function getTarget() {
+                                let closest = null;
+                                let closestDist = Infinity;
+
+                                out.persians.forEach(persian => {
+                                    console.log(persian.rig)
+                                    const dist = persian.rig.rig.mesh.position.distanceTo(new THREE.Vector3(x,y,z));
+                                    if (dist < closestDist) {
+                                        closestDist = dist;
+                                        closest = persian.rig.rig;
+                                    }
+                                });
+
+                                if (closest) {
+                                    return { mesh: closest.mesh, assigned: true };
+                                }
+                                return {assigned:false}
+                            }
+                            let target = getTarget()
+                            function update(){
+                                rig.rig.update();
+                                if (!target.assigned) {
+                                    target = getTarget()
+                                } else {
+                                    console.log(target)
+                                    rig.rig.mesh.lookAt(target.mesh.position)
+                                }
+                                
+                            }
+                            out.spartans.push({rig,update})
+                            return {rig, update}
                         }
-			out.persians=[]
-                        out.spawnPersian= function(x,y,z){
-                            let rig = out.loadRigFBX('assets/achilles.fbx',x,y,z,0.025,"_persian")
+                        out.persians=[]
+                        out.spawnPersian= async function(x,y,z){
+                            let rig = await out.loadRigFBX('assets/achilles.fbx',x,y,z,0.025,"_persian")
+                            function getTarget() {
+                                let closest = null;
+                                let closestDist = Infinity;
+                                console.log(out.spartans)
+                                out.spartans.forEach(spartan => {
+                                    const dist = spartan.rig.rig.mesh.position.distanceTo(new THREE.Vector3(x,y,z));
+                                    if (dist < closestDist) {
+                                        closestDist = dist;
+                                        closest = spartan.rig.rig;
+                                    }
+                                });
+
+                                if (closest) {
+                                    return { mesh: closest.mesh, assigned: true };
+                                }
+                                return {assigned:false}
+                            }
+                            let target = getTarget()
+                            function update(){
+                                rig.rig.update();
+                                if (!target.assigned) {
+                                    target = getTarget()
+                                } else {
+                                    console.log(target)
+                                    rig.rig.mesh.lookAt(target.mesh.position)
+                                }
+                            }
+                            out.persians.push({rig,update})
+                            return {rig, update}
                         }
+                        
                      return out })({})
                    ,v : (function(out){ // variables
                         out.scene = 'title'
                         out.playscene = "camp"
+                        out.fader = (function(fade) {
+                            fade = {
+                                alpha: 0,
+                                phase: 'idle', // idle, fadeIn, hold, fadeOut
+                                timer: 0,
+                                duration: 1.5,
+                                hold: 1.0,
+                                isBlack: false,
+
+                                start(duration = 1.5, hold = 1.0) {
+                                    this.phase = 'fadeIn';
+                                    this.timer = 0;
+                                    this.duration = duration;
+                                    this.hold = hold;
+                                    this.isBlack = false;
+                                },
+
+                                update(delta) {
+                                    this.timer += delta;
+
+                                    if (this.phase === 'fadeIn') {
+                                        this.alpha = Math.min(this.timer / this.duration, 1);
+                                        if (this.alpha >= 1) {
+                                            this.phase = 'hold';
+                                            this.timer = 0;
+                                            this.isBlack = true;
+                                        }
+                                    } else if (this.phase === 'hold') {
+                                        this.alpha = 1;
+                                        if (this.timer >= this.hold) {
+                                            this.phase = 'fadeOut';
+                                            this.timer = 0;
+                                        }
+                                    } else if (this.phase === 'fadeOut') {
+                                        this.alpha = Math.max(1 - (this.timer / this.duration), 0);
+                                        if (this.alpha <= 0) {
+                                            this.phase = 'idle';
+                                            this.isBlack = false;
+                                        }
+                                    }
+                                },
+
+                                draw() {
+                                    if (this.alpha > 0) {
+                                        ui_ctx.save();
+                                        ui_ctx.globalAlpha = this.alpha;
+                                        ui_ctx.fillStyle = "#000";
+                                        ui_ctx.fillRect(0, 0, ui_ctx.canvas.width, ui_ctx.canvas.height);
+                                        ui_ctx.restore();
+                                    }
+                                }
+                            };
+
+                            return fade;
+                        })({})
                      return out })({})
                     
                    ,k : (function(controls){ //keys
