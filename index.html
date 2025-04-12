@@ -471,8 +471,10 @@
                         setup.sea()
                         setup.camp()
                         index.f.spawnNPC(-10,5,0,'spartan')
+                        index.f.spawnNPC(-10,5,10,'spartan')
+                        index.f.spawnNPC(-10,5,-10,'spartan')
                         index.f.spawnNPC(10,5,0,'persian')
-                        cutscene()
+                        //cutscene()
 
                     }
                     setup.update()
@@ -662,6 +664,7 @@
                             });
                          }
                         out.FBXRigs = []
+                        out.cachedModels = {}
                         out.loadRigFBX = function(url, x, y, z, scale = 0.01, customID = '') {
                             const loader = new FBXLoader();
 
@@ -790,15 +793,22 @@
                                     (err) => reject(err)
                                 );
                             });
-                        };
+                         };
 
                         out.spartans = [], out.persians = []
                         out.spawnNPC = async function(x,y,z,nation){
                             let rig;
-                            if (nation == 'spartan'){
-                                rig = await out.loadRigFBX('assets/trojan3.fbx',x,y,z,0.025,"_spartan")
-                            } else if (nation == 'persian'){
-                                rig = await out.loadRigFBX('assets/achilles.fbx',x,y,z,0.025,"_persian")
+                            if (!out.cachedModels[nation]){
+                                if (nation == 'spartan'){
+                                    rig = await out.loadRigFBX('assets/trojan3.fbx',x,y,z,0.025,"_spartan")
+                                    out.cachedModels[nation] = rig
+                                } else if (nation == 'persian'){
+                                    rig = await out.loadRigFBX('assets/achilles.fbx',x,y,z,0.025,"_persian")
+                                    out.cachedModels[nation] = rig
+                                }
+                            } else {
+                                const cachedRig = out.cachedModels[nation];
+                                rig = JSON.parse(JSON.stringify(cachedRig));
                             }
 
                             function getTarget() {
