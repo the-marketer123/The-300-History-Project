@@ -56,6 +56,7 @@
             import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
             import  Stats  from 'three/addons/libs/stats.module.js'
             import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+            import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
             const RAPIER = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.11.2');
             await RAPIER.init();
 
@@ -71,6 +72,7 @@
                 
                 return Math.random()*(b-a)+a
             }
+            const clock = new THREE.Clock()
 
 
             /*Start Button*/
@@ -255,7 +257,7 @@
 
                     if (beginButton.hovered) {
                         gameStarted = true;
-
+                        index.v.fader.start()
                         const audio = document.getElementById("title_song");
                         audio.muted = false;
                         audio.play();
@@ -463,36 +465,57 @@
                         out.water.material.uniforms['time'].value += 1.0 / 60.0;                    
                      }
                 return out })({})
-                function startGame() {
+                async function startGame() {
                     if (!gameBegun) {
-
                         setup.sky = index.t.createSkybox(0);
-                        setup.mountains()
-                        setup.sea()
-                        setup.camp()
-                        index.f.spawnNPC(-10,5,0,'spartan')
-                        index.f.spawnNPC(-10,5,10,'spartan')
-                        index.f.spawnNPC(-10,5,-10,'spartan')
-                        index.f.spawnNPC(10,5,0,'persian')
-                        //cutscene()
+                        setup.mountains();
+                        setup.sea();
+                        setup.camp();
 
+                        // Wait for models to load before spawning NPCs
+                        for (let y = 0; y < 5; y++) {
+                            for (let x = 0; x < 10; x++) {
+                                await index.f.spawnNPC(100+x * 3, 5, y * 3, 'spartan');
+                            }
+                        }
+                        for (let y = 0; y < 5; y++) {
+                            for (let x = 0; x < 10; x++) {
+                                await index.f.spawnNPC(x * 3, 5, y * 3, 'persian');
+                            }
+                        }
+
+                        await index.f.spawnNPC(50, 5, 0, 'persian');
+                        gameBegun = true;
                     }
-                    setup.update()
-                    index.f.spartans.forEach(i => {i.update()} )
-                    index.f.persians.forEach(i => {i.update()} )
-                    gameBegun = true
-                }
+
+                    setup.update();
+                 }
+
+
                 function cutscene() {
                     index.t.orbits[index.t.camera.orbitNum].enabled = false
                     index.t.camera.position.set(5,0.75,5)
                     index.t.camera.lookAt(0,3,0)
-                }
-                function play (){
-                    startGame()
-                    index.r.world.step()
-                    index.t.renderer.render(index.t.scene,index.t.camera)
+                 }
+                function battle(){
 
+                 }
+                let gameStartPromise = null;
+                function play() {
+                    if (!gameStartPromise) {
+                        gameStartPromise = startGame(); // call once, async
+                        return; // wait until it's done
+                    }
 
+                    if (!gameBegun) {
+                        return; // still waiting for async setup
+                    }
+
+                    index.r.world.step();
+                    index.t.renderer.render(index.t.scene, index.t.camera);
+
+                    index.f.spartans.forEach(i => i.update());
+                    index.f.persians.forEach(i => i.update());
 
                     if (index.v.playscene = "camp"){
 
@@ -503,7 +526,9 @@
                     } else if (index.v.playscene = "day3"){
 
                     }
-                }
+                    index.v.fader.update(Math.min( 0.05, clock.getDelta() ) * 13)
+                 }
+
             /*index*/
                 let index = {
                     r : (function(out){ // rapier
@@ -663,247 +688,173 @@
                                 return clone;
                             });
                          }
-                        out.FBXRigs = []
-                        out.cachedModels = {}
-                        out.loadRigFBX = function(url, x, y, z, scale = 0.01, customID = '') {
+                        out.spartans = [], out.persians = []
+                        let loader = new FBXLoader()
+                        out.spartanModel = null;
+                        out.persianModel = null;
+                        out.loadModels = async function() {
                             const loader = new FBXLoader();
 
-                            return new Promise((resolve, reject) => {
-                                loader.load(
-                                    url,
-                                    (model) => {
-                                        model.scale.set(scale, scale, scale);
+                            out.spartanModel = await new Promise((res, rej) =>
+                                loader.load('assets/trojan3.fbx', res, undefined, rej)
+                            );
+                            out.persianModel = await new Promise((res, rej) =>
+                                loader.load('assets/achilles.fbx', res, undefined, rej)
+                            );
+                        };
+                        out.spawnNPC = async function (x, y, z, nation) {
+                            const isSpartan = nation === 'spartan';
+                            const model = isSpartan ? out.spartanModel : out.persianModel;
 
-                                        // Wrap in a group
-                                        const wrapper = new THREE.Group();
-                                        wrapper.add(model);
-                                        wrapper.position.set(x, y, z);
-                                        index.t.scene.add(wrapper);
+                            const base = await model; // Wait for the model to be loaded
+                            const clone = SkeletonUtils.clone(base);
+                            clone.scale.set(0.025, 0.025, 0.025);
 
-                                        // Recenter the model
-                                        const box = new THREE.Box3().setFromObject(model);
-                                        const size = new THREE.Vector3();
-                                        const center = new THREE.Vector3();
-                                        box.getSize(size);
-                                        box.getCenter(center);
-                                        model.position.sub(center); // center model inside wrapper
+                            const wrapper = new THREE.Group();
+                            wrapper.add(clone);
+                            wrapper.position.set(x, y, z);
+                            index.t.scene.add(wrapper);
 
-                                        // Create physics body
-                                        const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
-                                            .setTranslation(x, y, z)
-                                            .setCanSleep(true);
-                                        const rigid = index.r.world.createRigidBody(rigidBodyDesc);
-                                        rigid.setEnabledRotations(false, true, false); // only Y-axis rotation allowed
+                            // Center model inside wrapper
+                            const box = new THREE.Box3().setFromObject(clone);
+                            const size = new THREE.Vector3();
+                            const center = new THREE.Vector3();
+                            box.getSize(size);
+                            box.getCenter(center);
+                            clone.position.sub(center);
 
-                                        const halfExtents = {
-                                            x: (size.x * scale) / 2,
-                                            y: (size.y * scale) / 2,
-                                            z: (size.z * scale) / 2
-                                        };
+                            // Add physics
+                            const scale = clone.scale.x || 1;
+                            const halfExtents = {
+                                x: (size.x * scale) * 10,
+                                y: (size.y * scale) * 5,
+                                z: (size.z * scale) * 10
+                            };
 
-                                        const colliderDesc = RAPIER.ColliderDesc.cuboid(
-                                            halfExtents.x,
-                                            halfExtents.y,
-                                            halfExtents.z
-                                        ).setDensity(20);
-                                        const collider = index.r.world.createCollider(colliderDesc, rigid);
-                                        collider.userData = { id: "fbx_rig" + customID };
-                                        rigid.wakeUp();
+                            const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+                                .setTranslation(x, y, z)
+                                .setCanSleep(true);
+                            const rigid = index.r.world.createRigidBody(rigidBodyDesc);
+                            rigid.setEnabledRotations(false, true, false); // only Y-axis
 
-                                        function update(delta = 1 / 60) {
-                                            const { x, y, z } = rigid.translation();
-                                            const rot = rigid.rotation();
-                                            wrapper.position.set(x, y, z);
-                                            wrapper.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+                            const colliderDesc = RAPIER.ColliderDesc.cuboid(
+                                halfExtents.x, halfExtents.y, halfExtents.z
+                            ).setDensity(20);
+                            const collider = index.r.world.createCollider(colliderDesc, rigid);
 
-                                            if (mixer) mixer.update(delta);
+                            // Setup animation
+                            const mixer = new THREE.AnimationMixer(clone);
+                            const actions = {};
+                            const anims = ['idle', 'run', 'attack'];
 
-                                            if (y < -100) {
-                                                index.r.world.removeRigidBody(rigid);
-                                                index.t.scene.remove(wrapper);
-                                            }
-                                        }
-                                        let actions = {};
-
-                                        const mixer = new THREE.AnimationMixer(model); // Always create the mixer
-                                        if (model.animations && model.animations.length > 0) {
-                                            const action = mixer.clipAction(model.animations[0]);
-                                            action.play();
-                                        }
-
-                                        const rig = {
-                                            mesh: wrapper,
-                                            rigid,
-                                            colliderDesc,
-                                            update,
-                                            mixer: mixer,
-                                            actions: {},
-                                            playAnimation: function (name) {
-                                                if (this.currentAction === name) return; // 🔁 don't restart same anim
-
-                                                if (!this.actions[name]) {
-                                                    console.warn(`Animation '${name}' not found`);
-                                                    return;
-                                                }
-
-                                                // Stop previous
-                                                for (const a in this.actions) this.actions[a].stop();
-
-                                                // Play new one
-                                                this.actions[name].reset().play();
-                                                this.currentAction = name;
-                                            }
-                                        };
-
-                                        out.FBXRigs.push(rig);
-                                        resolve(rig); // ✅ Finish creating the rig first
-
-                                        // ✅ THEN load animations *after* the rig (and mixer) exist
+                            for (let animName of anims) {
+                                let animPath
+                                if (animName == 'idle'){
+                                    animPath = `assets/animations/run.fbx`;
+                                } else if (animName == 'attack'){
+                                    animPath = `assets/animations/attack1.fbx`;
+                                } else if (animName == 'run'){
+                                    animPath = `assets/animations/run.fbx`;
+                                }
+                                const animLoader = new FBXLoader();
+                                async function loadFBXAnimation(path) {
+                                    return new Promise((resolve, reject) => {
                                         const animLoader = new FBXLoader();
-                                        function loadAnim(name, path) {
-                                            animLoader.load(
-                                                path,
-                                                (anim) => {
-                                                    if (!rig.mixer) {
-                                                        console.error("Mixer not initialized before loading animation");
-                                                        return;
-                                                    }
-                                                    if (!anim.animations || anim.animations.length === 0) {
-                                                        console.warn(`No animations in ${path}`);
-                                                        return;
-                                                    }
-
-                                                    const clip = anim.animations[0];
-                                                    const action = rig.mixer.clipAction(clip);
-                                                    action.setLoop(THREE.LoopRepeat);
-                                                    rig.actions[name] = action;
-                                                    if (name === 'idle') action.play();
-                                                },
-                                                undefined,
-                                                (err) => console.error(`Failed to load animation '${name}':`, err)
-                                            );
-                                        }
-
-                                        loadAnim('run', 'assets/animations/run.fbx');
-                                        loadAnim('attack', 'assets/animations/attack1.fbx');
-                                        loadAnim('idle', 'assets/animations/run.fbx');
-
-                                    },
-                                    undefined,
-                                    (err) => reject(err)
-                                );
-                            });
-                         };
-
-                        out.spartans = [], out.persians = []
-                        out.spawnNPC = async function(x,y,z,nation){
-                            let rig;
-                            if (!out.cachedModels[nation]){
-                                if (nation == 'spartan'){
-                                    rig = await out.loadRigFBX('assets/trojan3.fbx',x,y,z,0.025,"_spartan")
-                                    out.cachedModels[nation] = rig
-                                } else if (nation == 'persian'){
-                                    rig = await out.loadRigFBX('assets/achilles.fbx',x,y,z,0.025,"_persian")
-                                    out.cachedModels[nation] = rig
+                                        animLoader.load(path, resolve, undefined, reject);
+                                    });
                                 }
-                            } else {
-                                const cachedRig = out.cachedModels[nation];
-                                rig = JSON.parse(JSON.stringify(cachedRig));
+                                const anim = await loadFBXAnimation(animPath);
+                                const clip = anim.animations[0];
+                                const action = mixer.clipAction(clip);
+                                action.setLoop(THREE.LoopRepeat);
+                                actions[animName] = action;
+                                if (animName === 'idle') action.play(); // default to idle
                             }
 
-                            function getTarget() {
+                            const rig = {
+                                mesh: wrapper,
+                                rigid,
+                                colliderDesc,
+                                mixer,
+                                actions,
+                                currentAction: '',
+                                playAnimation(name) {
+                                    if (this.currentAction === name) return;
+                                    if (!this.actions[name]) return;
+                                    for (let k in this.actions) this.actions[k].stop();
+                                    this.actions[name].reset().play();
+                                    this.currentAction = name;
+                                },
+                                update(delta = Math.min( 0.05, clock.getDelta() ) * 13) {
+                                    const pos = rigid.translation();
+                                    const rot = rigid.rotation();
+                                    wrapper.position.set(pos.x, pos.y, pos.z);
+                                    wrapper.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+                                    mixer.update(1/60);
+                                    if (pos.y < -100) {
+                                        index.r.world.removeRigidBody(rigid);
+                                        index.t.scene.remove(wrapper);
+                                    }
+                                }
+                            };
+
+                            const stats = {
+                                target: null,
+                                speed: 8,
+                                health: 1,
+                                dead: false
+                            };
+
+                            function findTarget() {
+                                const enemies = isSpartan ? out.persians : out.spartans;
                                 let closest = null;
-                                let closestDist = Infinity;
-                                switch (nation) {                               
-                                    case'spartan':
-                                        out.persians.forEach(persian => {
-                                            const dist = persian.rig.mesh.position.distanceTo(new THREE.Vector3(x,y,z));
-                                            if (dist < closestDist) {
-                                                closestDist = dist;
-                                                closest = persian.rig;
-                                            }
-                                        }); 
-                                    break;
-                                    case 'persian':
-                                        out.spartans.forEach(spartan => {
-                                            const dist = spartan.rig.mesh.position.distanceTo(new THREE.Vector3(x,y,z));
-                                            if (dist < closestDist) {
-                                                closestDist = dist;
-                                                closest = spartan.rig;
-                                            }
-                                        });
-                                    break;
+                                let minDist = Infinity;
+                                for (let e of enemies) {
+                                    const dist = e.rig.mesh.position.distanceTo(rig.mesh.position);
+                                    if (dist < minDist) {
+                                        minDist = dist;
+                                        closest = e.rig;
+                                    }
                                 }
-                                if (closest) {
-                                    return { mesh: closest.mesh, assigned: true };
-                                }
-                                return {assigned:false}
-                                
+                                return closest;
                             }
 
-                            let stats = {
-                                target:getTarget(),
-                                dead:false,
-                                health:1,
-                                speed:10,
-                                target_pos: new THREE.Vector3(),
-                            }
-                            function update(delta = 1/60) {
+                            function update(delta = Math.min( 0.05, clock.getDelta() ) * 13) {
                                 rig.update(delta);
-                                //console.log(rig.actions)
 
-
-                                if (!stats.target.assigned) {
-                                    stats.target = getTarget();
-                                    return;
+                                if (!stats.target || stats.target.mesh.position.y < -99) {
+                                    stats.target = findTarget();
+                                    if (!stats.target) {
+                                        rig.playAnimation('idle');
+                                        return;
+                                    }
                                 }
 
-                                const myPos = rig.rigid.translation();
+                                const pos = rig.rigid.translation();
                                 const targetPos = stats.target.mesh.position;
 
-                                // Face target
-                                let lookAt = new THREE.Vector3(stats.target.mesh.position.x, rig.mesh.position.y, stats.target.mesh.position.z)
+                                const distance = rig.mesh.position.distanceTo(targetPos);
+                                const lookAt = new THREE.Vector3(targetPos.x, rig.mesh.position.y, targetPos.z);
                                 rig.mesh.lookAt(lookAt);
 
-                                // Compute direction
-                                const direction = new THREE.Vector3(
-                                    targetPos.x - myPos.x,
-                                    0,
-                                    targetPos.z - myPos.z
-                                ).normalize();
-
-                                // Apply impulse toward target
-                                const speed = stats.speed; // Can be tweaked per unit
-                                const impulse = {
-                                    x: direction.x * speed,
-                                    y: 0,
-                                    z: direction.z * speed
-                                };
-                                const current = rig.rigid.translation();
-                                rig.rigid.setTranslation({ x: current.x, y: 2, z: current.z }, true);
-
-                                const dist = rig.mesh.position.distanceTo(targetPos);
-                                if (dist > 5) {
-                                    rig.rigid.wakeUp(); // Add this before applyImpulse
-                                    rig.rigid.setLinvel(impulse)
-                                    rig.playAnimation('run'); // or 'attack', or 'idle'
-
-
+                                if (distance > 4) {
+                                    const dir = new THREE.Vector3().subVectors(targetPos, rig.mesh.position).normalize();
+                                    rig.rigid.setLinvel({ x: dir.x * stats.speed, y: 0, z: dir.z * stats.speed });
+                                    rig.playAnimation('run');
                                 } else {
-                                    rig.rigid.setLinvel(new THREE.Vector3(0,0,0))
-                                    rig.playAnimation('attack'); // or 'attack', or 'idle'
-
+                                    rig.rigid.setLinvel({ x: 0, y: 0, z: 0 });
+                                    rig.playAnimation('attack');
                                 }
                             }
 
-                            let dead = false;
-                            if (nation == 'spartan') {
-                                out.spartans.push({rig,update})
-                            } else if (nation == 'persian'){
-                                out.persians.push({rig,update})
-                            }
-                            return {rig, update}
-                        }
+                            const npc = { rig, update };
+                            if (isSpartan) out.spartans.push(npc);
+                            else out.persians.push(npc);
+
+                            return npc;
+                        };
+
+
 			            
                         
                      return out })({})
@@ -1016,6 +967,8 @@
                         
                      })({})
                 }
+                await index.f.loadModels();
+
             /*draw*/
             
             function draw() {
