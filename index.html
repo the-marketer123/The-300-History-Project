@@ -232,6 +232,16 @@
                     if (titleAlpha < 1) {
                         titleAlpha += titleFadeSpeed;
                     }
+                    if (gameStarted && index.v.fader.isBlack){
+                        const audio = document.getElementById("title_song");
+                        audio.muted = false;
+                        audio.play();
+                        
+                        document.body.style.backgroundImage = 'none';
+                        document.body.style.backgroundColor = "white";
+
+                        index.v.scene = 'play'
+                    }
                 }
 
                 uiCanvas.addEventListener("mousemove", (e) => {
@@ -257,15 +267,8 @@
 
                     if (beginButton.hovered) {
                         gameStarted = true;
-                        index.v.fader.start()
-                        const audio = document.getElementById("title_song");
-                        audio.muted = false;
-                        audio.play();
+                        index.v.fader.start(20,20,true)
                         
-                        document.body.style.backgroundImage = 'none';
-                        document.body.style.backgroundColor = "black";
-
-                        index.v.scene = 'play'
                     }
                 });
 
@@ -701,7 +704,7 @@
                             out.persianModel = await new Promise((res, rej) =>
                                 loader.load('assets/achilles.fbx', res, undefined, rej)
                             );
-                        };
+                         };
                         out.spawnNPC = async function (x, y, z, nation) {
                             const isSpartan = nation === 'spartan';
                             const model = isSpartan ? out.spartanModel : out.persianModel;
@@ -869,16 +872,19 @@
                                 duration: 1.5,
                                 hold: 1.0,
                                 isBlack: false,
+                                tillGameStart: false,
 
-                                start(duration = 1.5, hold = 1.0) {
+                                start(duration = 1.5, hold = 1.0,tillGameStart) {
                                     this.phase = 'fadeIn';
                                     this.timer = 0;
                                     this.duration = duration;
                                     this.hold = hold;
                                     this.isBlack = false;
+                                    this.tillGameStart = true
                                 },
 
                                 update(delta) {
+                                    console.log(this.alpha)
                                     this.timer += delta;
 
                                     if (this.phase === 'fadeIn') {
@@ -891,7 +897,11 @@
                                     } else if (this.phase === 'hold') {
                                         this.alpha = 1;
                                         if (this.timer >= this.hold) {
-                                            this.phase = 'fadeOut';
+                                            if (!this.tillGameStart){
+                                                this.phase = 'fadeOut';
+                                            } else if () {
+
+                                            }
                                             this.timer = 0;
                                         }
                                     } else if (this.phase === 'fadeOut') {
@@ -985,6 +995,8 @@
 
 
                 requestAnimationFrame(draw);
+                index.v.fader.update(Math.min( 0.05, clock.getDelta() ) * 13)
+                index.v.fader.draw()
             }
             draw()
         </script>          
