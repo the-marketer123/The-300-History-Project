@@ -236,6 +236,7 @@
                         const audio = document.getElementById("title_song");
                         audio.muted = false;
                         audio.play();
+                        audio.currentTime = 0; // Reset the audio to the beginning
                         
                         document.body.style.backgroundImage = 'none';
                         document.body.style.backgroundColor = "white";
@@ -267,7 +268,7 @@
 
                     if (beginButton.hovered) {
                         gameStarted = true;
-                        index.v.fader.start(20,20,true)
+                        index.v.fader.start(2,2,true)
                         
                     }
                 });
@@ -823,6 +824,7 @@
                             }
 
                             function update(delta = Math.min( 0.05, clock.getDelta() ) * 13) {
+                                if (rig) index.v.loaded = true
                                 rig.update(delta);
 
                                 if (!stats.target || stats.target.mesh.position.y < -99) {
@@ -864,6 +866,7 @@
                    ,v : (function(out){ // variables
                         out.scene = 'title'
                         out.playscene = "camp"
+                        out.loaded = false
                         out.fader = (function(fade) {
                             fade = {
                                 alpha: 0,
@@ -899,13 +902,15 @@
                                         if (this.timer >= this.hold) {
                                             if (!this.tillGameStart){
                                                 this.phase = 'fadeOut';
-                                            } else if () {
-
+                                                this.timer = 0;
+                                            } else if (out.loaded) {
+                                                console.log('yowsp')
+                                                this.phase = 'fadeOut'
+                                                this.timer = 0;
                                             }
-                                            this.timer = 0;
                                         }
                                     } else if (this.phase === 'fadeOut') {
-                                        this.alpha = Math.max(1 - (this.timer / this.duration), 0);
+                                        this.alpha =  Math.max(1 - (this.timer / this.duration), 0);
                                         if (this.alpha <= 0) {
                                             this.phase = 'idle';
                                             this.isBlack = false;
@@ -920,6 +925,10 @@
                                         ui_ctx.fillStyle = "#000";
                                         ui_ctx.fillRect(0, 0, ui_ctx.canvas.width, ui_ctx.canvas.height);
                                         ui_ctx.restore();
+                                        if (this.tillGameStart && this.phase === 'fadeIn'){
+                                            const audio = document.getElementById("title_song");
+                                            audio.volume = 1 - this.alpha
+                                        }
                                     }
                                 }
                             };
@@ -995,7 +1004,7 @@
 
 
                 requestAnimationFrame(draw);
-                index.v.fader.update(Math.min( 0.05, clock.getDelta() ) * 13)
+                index.v.fader.update(1/60)
                 index.v.fader.draw()
             }
             draw()
