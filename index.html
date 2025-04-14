@@ -477,6 +477,7 @@
                             index.t.dirLight.intensity = 0.2
                         });
                         index.t.scene.add(out.camp_meshes)
+                        //return out.camp_meshes
                      }
                     out.update = function(){
                         out.water.material.uniforms['time'].value += 1.0 / 60.0;                    
@@ -522,12 +523,13 @@
                  }
                 async function battle(){
                     if (daySetup){
-                        for (let y = 0; y < 5; y++) {
+                        index.t.scene.remove(setup.camp_meshes)
+                        for (let y = 0; y < 30; y++) {
                             for (let x = 0; x < 10; x++) {
                                 await index.f.spawnNPC(x * 3, 0, y * 3, 'spartan');
                             }
                         }
-                        for (let y = 0; y < 5; y++) {
+                        for (let y = 0; y < 30; y++) {
                             for (let x = 0; x < 10; x++) {
                                 await index.f.spawnNPC(100+x * 3, 0, y * 3, 'persian');
                             }
@@ -748,7 +750,7 @@
                             const isSpartan = nation === 'spartan';
                             const model = isSpartan ? out.spartanModel : out.persianModel;
 
-                            const base = await model; // Wait for the model to be loaded
+                            const base = await model;
                             const clone = SkeletonUtils.clone(base);
                             clone.scale.set(0.025, 0.025, 0.025);
 
@@ -757,66 +759,27 @@
                             wrapper.position.set(x, y, z);
                             index.t.scene.add(wrapper);
 
-                            // Center model inside wrapper
                             const box = new THREE.Box3().setFromObject(clone);
-                            const size = new THREE.Vector3();
                             const center = new THREE.Vector3();
-                            box.getSize(size);
                             box.getCenter(center);
                             clone.position.sub(center);
 
-                            // Add physics
-                            const scale = clone.scale.x || 1;
-                            const halfExtents = {
-                                x: (size.x * scale) * 10,
-                                y: (size.y * scale) * 5,
-                                z: (size.z * scale) * 10
-                            };
-
-                            const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
-                                .setTranslation(x, y, z)
-                                .setCanSleep(true);
-                            const rigid = index.r.world.createRigidBody(rigidBodyDesc);
-                            rigid.setEnabledRotations(false, true, false); // only Y-axis
-
-                            const colliderDesc = RAPIER.ColliderDesc.cuboid(
-                                halfExtents.x, halfExtents.y, halfExtents.z
-                            ).setDensity(20);
-                            const collider = index.r.world.createCollider(colliderDesc, rigid);
-
-                            // Setup animation
                             const mixer = new THREE.AnimationMixer(clone);
                             const actions = {};
                             const anims = ['Idle', 'run', 'attack'];
 
                             for (let animName of anims) {
-                                let animPath
-                                if (animName == 'Idle'){
-                                    animPath = `assets/animations/Idle.fbx`;
-                                } else if (animName == 'attack'){
-                                    animPath = `assets/animations/attack1.fbx`;
-                                } else if (animName == 'run'){
-                                    animPath = `assets/animations/run.fbx`;
-                                }
-                                const animLoader = new FBXLoader();
-                                async function loadFBXAnimation(path) {
-                                    return new Promise((resolve, reject) => {
-                                        const animLoader = new FBXLoader();
-                                        animLoader.load(path, resolve, undefined, reject);
-                                    });
-                                }
-                                const anim = await loadFBXAnimation(animPath);
+                                const animPath = `assets/animations/${animName === 'attack' ? 'attack1' : animName}.fbx`;
+                                const anim = await new Promise((res, rej) => new FBXLoader().load(animPath, res, undefined, rej));
                                 const clip = anim.animations[0];
                                 const action = mixer.clipAction(clip);
                                 action.setLoop(THREE.LoopRepeat);
                                 actions[animName] = action;
-                                if (animName === 'Idle') action.play(); // default to Idle
+                                if (animName === 'Idle') action.play();
                             }
 
                             const rig = {
                                 mesh: wrapper,
-                                rigid,
-                                colliderDesc,
                                 mixer,
                                 actions,
                                 currentAction: '',
@@ -827,22 +790,14 @@
                                     this.actions[name].reset().play();
                                     this.currentAction = name;
                                 },
-                                update(delta = Math.min( 0.05, clock.getDelta() ) * 13) {
-                                    const pos = rigid.translation();
-                                    const rot = rigid.rotation();
-                                    wrapper.position.set(pos.x, pos.y, pos.z);
-                                    wrapper.quaternion.set(rot.x, rot.y, rot.z, rot.w);
-                                    mixer.update(1/60);
-                                    if (pos.y < -100) {
-                                        index.r.world.removeRigidBody(rigid);
-                                        index.t.scene.remove(wrapper);
-                                    }
+                                update(delta = 1 / 60) {
+                                    mixer.update(delta);
                                 }
                             };
 
                             const stats = {
                                 target: null,
-                                speed: 8,
+                                speed: 0.07,
                                 health: 1,
                                 dead: false
                             };
@@ -861,7 +816,28 @@
                                 return closest;
                             }
 
-                            function update(delta = Math.min( 0.05, clock.getDelta() ) * 13) {
+                            function checkFrontObstruction() {
+                                const allOthers = [...out.spartans, ...out.persians].filter(npc => npc.rig.mesh !== rig.mesh);
+                                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(rig.mesh.quaternion).normalize();
+                                const origin = rig.mesh.position.clone();
+                                const detectionDistance = 2.5;
+
+                                for (let npc of allOthers) {
+                                    const toOther = npc.rig.mesh.position.clone().sub(origin);
+                                    const forwardDist = toOther.dot(forward);
+
+                                    if (forwardDist > 0 && forwardDist < detectionDistance) {
+                                        const lateralOffset = toOther.clone().sub(forward.clone().multiplyScalar(forwardDist));
+                                        if (lateralOffset.length() < 1.2) {
+                                            return npc.rig;
+                                        }
+                                    }
+                                }
+
+                                return null;
+                            }
+
+                            function update(delta = 1 / 60) {
                                 rig.update(delta);
 
                                 if (!stats.target || stats.target.mesh.position.y < -99) {
@@ -872,33 +848,35 @@
                                     }
                                 }
 
-                                const pos = rig.rigid.translation();
                                 const targetPos = stats.target.mesh.position;
-
                                 const distance = rig.mesh.position.distanceTo(targetPos);
                                 const lookAt = new THREE.Vector3(targetPos.x, rig.mesh.position.y, targetPos.z);
                                 rig.mesh.lookAt(lookAt);
 
-                                if (distance > 4) {
-                                    const dir = new THREE.Vector3().subVectors(targetPos, rig.mesh.position).normalize();
-                                    rig.rigid.setLinvel({ x: dir.x * stats.speed, y: 0, z: dir.z * stats.speed });
-                                    rig.playAnimation('run');
+                                const blocked = checkFrontObstruction();
+                                if (blocked) {
+                                    if (blocked === stats.target) {
+                                        rig.playAnimation('attack');
+                                    } else {
+                                        rig.playAnimation('Idle');
+                                    }
                                 } else {
-                                    rig.rigid.setLinvel({ x: 0, y: 0, z: 0 });
-                                    rig.playAnimation('attack');
-                                }
-                                if (rig.rigid.linvel().x === 0 && rig.rigid.linvel().z){
-                                    rig.mesh.position.set(rig.mesh.position.x,1,rig.mesh.position.z)
-                                    rig.playAnimation('Idle');
+                                    if (distance > 3) {
+                                        const dir = new THREE.Vector3().subVectors(targetPos, rig.mesh.position).normalize().multiplyScalar(stats.speed);
+                                        rig.mesh.position.add(dir);
+                                        rig.playAnimation('run');
+                                    } else {
+                                        rig.playAnimation('attack');
+                                    }
                                 }
                             }
+                            rig.mesh.position.y = 2
 
                             const npc = { rig, update };
-                            if (isSpartan) out.spartans.push(npc);
-                            else out.persians.push(npc);
-                            console.log('npc')
+                            (isSpartan ? out.spartans : out.persians).push(npc);
                             return npc;
-                        };
+                         };
+
                         out.player = (function(player){
                             player.setPlayer = async function(x,y,z,camera) {
                                 player.camera = camera
@@ -1227,7 +1205,7 @@
                 index.v.fader.draw()
             }
 
-            
+
             draw()
         </script>          
     </body>
