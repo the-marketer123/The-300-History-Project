@@ -762,12 +762,12 @@
                             // Setup animation
                             const mixer = new THREE.AnimationMixer(clone);
                             const actions = {};
-                            const anims = ['idle', 'run', 'attack'];
+                            const anims = ['Idle', 'run', 'attack'];
 
                             for (let animName of anims) {
                                 let animPath
-                                if (animName == 'idle'){
-                                    animPath = `assets/animations/idle.fbx`;
+                                if (animName == 'Idle'){
+                                    animPath = `assets/animations/Idle.fbx`;
                                 } else if (animName == 'attack'){
                                     animPath = `assets/animations/attack1.fbx`;
                                 } else if (animName == 'run'){
@@ -785,7 +785,7 @@
                                 const action = mixer.clipAction(clip);
                                 action.setLoop(THREE.LoopRepeat);
                                 actions[animName] = action;
-                                if (animName === 'idle') action.play(); // default to idle
+                                if (animName === 'Idle') action.play(); // default to Idle
                             }
 
                             const rig = {
@@ -843,7 +843,7 @@
                                 if (!stats.target || stats.target.mesh.position.y < -99) {
                                     stats.target = findTarget();
                                     if (!stats.target) {
-                                        rig.playAnimation('idle');
+                                        rig.playAnimation('Idle');
                                         return;
                                     }
                                 }
@@ -865,7 +865,7 @@
                                 }
                                 if (rig.rigid.linvel().x === 0 && rig.rigid.linvel().z){
                                     rig.mesh.position.set(rig.mesh.position.x,2,rig.mesh.position.z)
-                                    rig.playAnimation('idle');
+                                    rig.playAnimation('Idle');
                                 }
                             }
 
@@ -892,12 +892,12 @@
                             player.currentAction= ''
                             player.mixer = new THREE.AnimationMixer(player.mesh);
                             player.actions = {};
-                            let anims = ['idle', 'run', 'attack'];
+                            let anims = ['Idle', 'run', 'attack'];
 
                             for (let animName of anims) {
                                 let animPath
-                                if (animName == 'idle'){
-                                    animPath = `assets/animations/idle.fbx`;
+                                if (animName == 'Idle'){
+                                    animPath = `assets/animations/Idle.fbx`;
                                 } else if (animName == 'attack'){
                                     animPath = `assets/animations/attack1.fbx`;
                                 } else if (animName == 'run'){
@@ -915,7 +915,7 @@
                                 const action = player.mixer.clipAction(clip);
                                 action.setLoop(THREE.LoopRepeat);
                                 player.actions[animName] = action;
-                                if (animName === 'idle') action.play(); // default to idle
+                                if (animName === 'Idle') action.play(); // default to Idle
                             }
                         }
                         player.playAnimation= function(name) {
@@ -1002,7 +1002,7 @@
                                 if (impulse.x !== 0 || impulse.z !== 0){
                                     player.playAnimation('run');
                                 } else {
-                                    player.playAnimation('idle');
+                                    player.playAnimation('Idle');
                                 }
 
                                 player.mesh.position.x += impulse.x
@@ -1055,7 +1055,7 @@
                         out.fader = (function(fade) {
                             fade = {
                                 alpha: 0,
-                                phase: 'idle', // idle, fadeIn, hold, fadeOut
+                                phase: 'Idle', // Idle, fadeIn, hold, fadeOut
                                 timer: 0,
                                 duration: 1.5,
                                 hold: 1.0,
@@ -1095,7 +1095,7 @@
                                     } else if (this.phase === 'fadeOut') {
                                         this.alpha =  Math.max(1 - (this.timer / this.duration), 0);
                                         if (this.alpha <= 0) {
-                                            this.phase = 'idle';
+                                            this.phase = 'Idle';
                                             this.isBlack = false;
                                         }
                                     }
