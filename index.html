@@ -310,31 +310,32 @@
                             const clone5 = gltf.scene.clone();
 
                             let rotVector = new THREE.Vector3(0,0,0)
-                            let yoff = -5.225
+                            let yoff = -1.225
+                            let xoff = -1700 / 5
                             clone1.rotation.setFromVector3(rotVector)
-                            clone1.scale.set(50, 50, 50)
+                            clone1.scale.set(10, 10, 10)
                             clone1.position.y = yoff   
                             clone1.position.x = 0   
 
                             clone2.rotation.setFromVector3(rotVector)
-                            clone2.scale.set(50, 50, 50)
+                            clone2.scale.set(10, 10, 10)
                             clone2.position.y = yoff   
-                            clone2.position.x = -1700   
+                            clone2.position.x = xoff   
 
                             clone3.rotation.setFromVector3(rotVector)
-                            clone3.scale.set(50, 50, 50)
+                            clone3.scale.set(10, 10, 10)
                             clone3.position.y = yoff   
-                            clone3.position.x = 1700 
+                            clone3.position.x = xoff 
 
                             clone4.rotation.setFromVector3(rotVector)
-                            clone4.scale.set(50, 50, 50)
+                            clone4.scale.set(10, 10, 10)
                             clone4.position.y = yoff 
-                            clone4.position.x = -3400 
+                            clone4.position.x = xoff*2 
 
                             clone5.rotation.setFromVector3(rotVector)
-                            clone5.scale.set(50, 50, 50)
+                            clone5.scale.set(10, 10, 10)
                             clone5.position.y = yoff
-                            clone5.position.x = 3400
+                            clone5.position.x = xoff*2
 
                             index.t.scene.add(clone1)
                             index.t.scene.add(clone2)
@@ -524,14 +525,14 @@
                 async function battle(){
                     if (daySetup){
                         index.t.scene.remove(setup.camp_meshes)
-                        for (let y = 0; y < 30; y++) {
-                            for (let x = 0; x < 10; x++) {
-                                await index.f.spawnNPC(x * 3, 0, y * 3, 'spartan');
+                        for (let y = 0; y < 28; y++) {
+                            for (let x = 0; x < 2; x++) {
+                                await index.f.spawnNPC(x * 3, 0, y * 3-50, 'spartan');
                             }
                         }
-                        for (let y = 0; y < 30; y++) {
-                            for (let x = 0; x < 10; x++) {
-                                await index.f.spawnNPC(100+x * 3, 0, y * 3, 'persian');
+                        for (let y = 0; y < 28; y++) {
+                            for (let x = 0; x < 2; x++) {
+                                await index.f.spawnNPC(100+x * 3, 0, y * 3-50, 'persian');
                             }
                         }
                     }
@@ -544,6 +545,10 @@
                  let gameStartPromise = null;
                  let daySetup = true;
                  function play() {
+                    if (index.k.keysPressed.KeyO){
+                        const monologue = document.getElementById("monologue");
+                        monologue.currentTime = 53
+                    }
                     if (!gameStartPromise) {
                         gameStartPromise = startGame(); // call once, async
                         return; // wait until it's done
@@ -820,7 +825,7 @@
                                 const allOthers = [...out.spartans, ...out.persians].filter(npc => npc.rig.mesh !== rig.mesh);
                                 const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(rig.mesh.quaternion).normalize();
                                 const origin = rig.mesh.position.clone();
-                                const detectionDistance = 2.5;
+                                const detectionDistance = 4;
 
                                 for (let npc of allOthers) {
                                     const toOther = npc.rig.mesh.position.clone().sub(origin);
@@ -869,6 +874,9 @@
                                         rig.playAnimation('attack');
                                     }
                                 }
+                            }
+                            if (rig.mesh.position.z < -50){
+                                rig.mesh.position.z+1
                             }
                             rig.mesh.position.y = 2
 
