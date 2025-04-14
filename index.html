@@ -50,6 +50,10 @@
             <source src="assets/crickets.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
         </audio>
+        <audio autoplay muted id="monologue">
+            <source src="assets/monologue.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
 
         <script type="module">
             import * as THREE from 'three';
@@ -485,20 +489,35 @@
                         setup.sea();
                         setup.camp();
 
-                        await index.f.spawnNPC(50, 5, 0, 'persian');
                         gameBegun = true;
+                        index.v.loaded = true
+
                     }
 
                     setup.update();
                  }
 
 
-                function cutscene() {
+                async function cutscene() {
+
                     index.t.orbits[index.t.camera.orbitNum].enabled = false
                     index.t.camera.position.set(5,0.75,5)
                     index.t.camera.lookAt(0,3,0)
-                    daySetup = true
-                    index.v.playscene = "day1"
+                    daySetup = false
+
+                    const monologue = document.getElementById("monologue");
+                    monologue.volume = 1
+                    monologue.muted = false;
+                    monologue.play();
+                    monologue.addEventListener("ended", () => {
+                        index.v.playscene = "day1"
+                        daySetup = true
+
+                    });
+                    monologue.currentTime = 0; // Reset the audio to the beginning
+
+                    await index.f.loadModels();
+
                  }
                 async function battle(){
                     for (let y = 0; y < 5; y++) {
@@ -837,7 +856,6 @@
                             }
 
                             function update(delta = Math.min( 0.05, clock.getDelta() ) * 13) {
-                                if (rig) index.v.loaded = true
                                 rig.update(delta);
 
                                 if (!stats.target || stats.target.mesh.position.y < -99) {
@@ -1172,7 +1190,6 @@
                         
                      })({})
                 }
-                await index.f.loadModels();
 
             /*draw*/
             
