@@ -414,7 +414,7 @@
 
                         loader.load('assets/tents/viking_tent_001/mesh/highpoly_viking_tent_001.fbx', fbx => {
                             function campcircle(centerX,centerY,centerZ){
-                                loader.load('assets/firepit.fbx', fbx => {
+                                loader.load('assets/firepit.FBX', fbx => {
                                     let firepit = fbx.clone();
                                     firepit.position.set(centerX,centerY-0.5,centerZ)
                                     firepit.scale.set(1/35,1/35,1/35)
