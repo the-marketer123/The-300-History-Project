@@ -512,6 +512,7 @@
                     monologue.addEventListener("ended", () => {
                         index.v.playscene = "day1"
                         daySetup = true
+                        index.v.fader.fadeIn()
 
                     });
                     monologue.currentTime = 0; // Reset the audio to the beginning
@@ -520,19 +521,23 @@
 
                  }
                 async function battle(){
-                    for (let y = 0; y < 5; y++) {
-                        for (let x = 0; x < 10; x++) {
-                            //await index.f.spawnNPC(100+x * 3, 5, y * 3, 'spartan');
+                    if (daySetup){
+                        for (let y = 0; y < 5; y++) {
+                            for (let x = 0; x < 10; x++) {
+                                await index.f.spawnNPC(x * 3, 0, y * 3, 'spartan');
+                            }
                         }
-                    }
-                    for (let y = 0; y < 5; y++) {
-                        for (let x = 0; x < 10; x++) {
-                         //   await index.f.spawnNPC(x * 3, 5, y * 3, 'persian');
+                        for (let y = 0; y < 5; y++) {
+                            for (let x = 0; x < 10; x++) {
+                                await index.f.spawnNPC(100+x * 3, 0, y * 3, 'persian');
+                            }
                         }
                     }
                     index.f.player.setPlayer(0,0,0,index.t.camera)
                     index.t.orbits[index.t.camera.orbitNum].enabled = false
                     daySetup = false
+                    index.v.fader.fadeOut()
+
                  }
                  let gameStartPromise = null;
                  let daySetup = true;
@@ -555,8 +560,8 @@
                     if (index.v.playscene == "camp" && daySetup){
                         cutscene()
                     } else if (index.v.playscene == "day1" && daySetup){
-                        console.log('ji')
                         battle()
+                        daySetup = false
                     } else if (index.v.playscene == "day2" && daySetup){
 
                     } else if (index.v.playscene == "day3" && daySetup){
@@ -882,7 +887,7 @@
                                     rig.playAnimation('attack');
                                 }
                                 if (rig.rigid.linvel().x === 0 && rig.rigid.linvel().z){
-                                    rig.mesh.position.set(rig.mesh.position.x,2,rig.mesh.position.z)
+                                    rig.mesh.position.set(rig.mesh.position.x,1,rig.mesh.position.z)
                                     rig.playAnimation('Idle');
                                 }
                             }
@@ -890,176 +895,176 @@
                             const npc = { rig, update };
                             if (isSpartan) out.spartans.push(npc);
                             else out.persians.push(npc);
-
+                            console.log('npc')
                             return npc;
                         };
                         out.player = (function(player){
-                        player.setPlayer = async function(x,y,z,camera) {
-                            player.camera = camera
-                            const model = out.spartanModel
-                            const base = await model; // Wait for the model to be loaded
-                            player.mesh = SkeletonUtils.clone(base);
-                            player.mesh.scale.set(0.025, 0.025, 0.025);
-                            player.mesh.position.set(x,y,z)
-                            player.speed= 0.25,
-                            player.health= 1,
-                            player.dead= false
-                            player.enabled = true
-                            player.yaw = player.pitch = 0
-                            index.t.scene.add(player.mesh)
-                            player.currentAction= ''
-                            player.mixer = new THREE.AnimationMixer(player.mesh);
-                            player.actions = {};
-                            let anims = ['Idle', 'run', 'attack'];
+                            player.setPlayer = async function(x,y,z,camera) {
+                                player.camera = camera
+                                const model = out.spartanModel
+                                const base = await model; // Wait for the model to be loaded
+                                player.mesh = SkeletonUtils.clone(base);
+                                player.mesh.scale.set(0.025, 0.025, 0.025);
+                                player.mesh.position.set(x,y,z)
+                                player.speed= 0.25,
+                                player.health= 1,
+                                player.dead= false
+                                player.enabled = true
+                                player.yaw = player.pitch = 0
+                                index.t.scene.add(player.mesh)
+                                player.currentAction= ''
+                                player.mixer = new THREE.AnimationMixer(player.mesh);
+                                player.actions = {};
+                                let anims = ['Idle', 'run', 'attack'];
 
-                            for (let animName of anims) {
-                                let animPath
-                                if (animName == 'Idle'){
-                                    animPath = `assets/animations/Idle.fbx`;
-                                } else if (animName == 'attack'){
-                                    animPath = `assets/animations/attack1.fbx`;
-                                } else if (animName == 'run'){
-                                    animPath = `assets/animations/run.fbx`;
-                                }
-                                player.animLoader = new FBXLoader();
-                                async function loadFBXAnimation(path) {
-                                    return new Promise((resolve, reject) => {
-                                        player.animLoader = new FBXLoader();
-                                        player.animLoader.load(path, resolve, undefined, reject);
-                                    });
-                                }
-                                let anim = await loadFBXAnimation(animPath);
-                                const clip = anim.animations[0];
-                                const action = player.mixer.clipAction(clip);
-                                action.setLoop(THREE.LoopRepeat);
-                                player.actions[animName] = action;
-                                if (animName === 'Idle') action.play(); // default to Idle
-                            }
-                        }
-                        player.playAnimation= function(name) {
-                            if (player.currentAction === name) return;
-                            if (!player.actions[name]) return;
-                            for (let k in player.actions) player.actions[k].stop();
-                            player.actions[name].reset().play();
-                            player.currentAction = name;
-                        }
-                        player.checkCollision = function(vector) {
-                            let stop = false
-                            if (out.spartans.length > 0) {
-                                out.spartans.forEach(spartan => {
-                                    if (spartan.mesh){
-                                        if (spartan.mesh.position.distanceTo(player.mesh.position) < 1.5) stop = true
-                                    }                                })
-                            }
-                            if (out.persians.length > 0) {
-                                out.persians.forEach(persian => {
-                                    if (persian.mesh){
-                                        if (persian.mesh.position.distanceTo(player.mesh.position) < 1.5) stop = true
+                                for (let animName of anims) {
+                                    let animPath
+                                    if (animName == 'Idle'){
+                                        animPath = `assets/animations/Idle.fbx`;
+                                    } else if (animName == 'attack'){
+                                        animPath = `assets/animations/attack1.fbx`;
+                                    } else if (animName == 'run'){
+                                        animPath = `assets/animations/run.fbx`;
                                     }
-                                })
+                                    player.animLoader = new FBXLoader();
+                                    async function loadFBXAnimation(path) {
+                                        return new Promise((resolve, reject) => {
+                                            player.animLoader = new FBXLoader();
+                                            player.animLoader.load(path, resolve, undefined, reject);
+                                        });
+                                    }
+                                    let anim = await loadFBXAnimation(animPath);
+                                    const clip = anim.animations[0];
+                                    const action = player.mixer.clipAction(clip);
+                                    action.setLoop(THREE.LoopRepeat);
+                                    player.actions[animName] = action;
+                                    if (animName === 'Idle') action.play(); // default to Idle
+                                }
                             }
-                            if (stop) vector = new THREE.Vector3(0,0,0)
-                            return vector
-                         }
-                        player.runPlayerPhysics = function (dt){
-                            player.mixer.update(dt);
-                            player.checkCollision()
-                            if (player.enabled) {
-                                player.cosPitch = Math.cos(player.pitch);
-                                player.sinPitch = Math.sin(player.pitch);
-                                player.cosYaw = Math.cos(player.yaw);
-                                player.sinYaw = Math.sin(player.yaw);
-
-                                let sdir = player.sinYaw,
-                                    cdir = -player.cosYaw,
-                                    speed = player.speed
-
-                                let impulse = {x:0,y:0,z:0}
-
-                                let moving = false
-                                let movingX = (index.k.keysHeld.KeyD || index.k.keysHeld.KeyA);
-                                if (index.k.keysHeld.KeyD && index.k.keysHeld.KeyA) movingX = false
-                                let movingZ = (index.k.keysHeld.KeyW || index.k.keysHeld.KeyS);
-                                if (index.k.keysHeld.KeyW && index.k.keysHeld.KeyS) movingZ = false
-
-                                if (movingX) {
-                                    if (!movingZ){
-                                        if (index.k.keysHeld.KeyD) {
-                                            impulse.x += cdir * speed;
-                                            impulse.z -= sdir * speed;
-                                        } 
-                                        if (index.k.keysHeld.KeyA) {
-                                            impulse.x -= cdir * speed;
-                                            impulse.z += sdir * speed;
+                            player.playAnimation= function(name) {
+                                if (player.currentAction === name) return;
+                                if (!player.actions[name]) return;
+                                for (let k in player.actions) player.actions[k].stop();
+                                player.actions[name].reset().play();
+                                player.currentAction = name;
+                            }
+                            player.checkCollision = function(vector) {
+                                let stop = false
+                                if (out.spartans.length > 0) {
+                                    out.spartans.forEach(spartan => {
+                                        if (spartan.mesh){
+                                            if (spartan.mesh.position.distanceTo(player.mesh.position) < 1.5) stop = true
+                                        }                                })
+                                }
+                                if (out.persians.length > 0) {
+                                    out.persians.forEach(persian => {
+                                        if (persian.mesh){
+                                            if (persian.mesh.position.distanceTo(player.mesh.position) < 1.5) stop = true
                                         }
+                                    })
+                                }
+                                if (stop) vector = new THREE.Vector3(0,0,0)
+                                return vector
+                            }
+                            player.runPlayerPhysics = function (dt){
+                                player.mixer.update(dt);
+                                player.checkCollision()
+                                if (player.enabled) {
+                                    player.cosPitch = Math.cos(player.pitch);
+                                    player.sinPitch = Math.sin(player.pitch);
+                                    player.cosYaw = Math.cos(player.yaw);
+                                    player.sinYaw = Math.sin(player.yaw);
+
+                                    let sdir = player.sinYaw,
+                                        cdir = -player.cosYaw,
+                                        speed = player.speed
+
+                                    let impulse = {x:0,y:0,z:0}
+
+                                    let moving = false
+                                    let movingX = (index.k.keysHeld.KeyD || index.k.keysHeld.KeyA);
+                                    if (index.k.keysHeld.KeyD && index.k.keysHeld.KeyA) movingX = false
+                                    let movingZ = (index.k.keysHeld.KeyW || index.k.keysHeld.KeyS);
+                                    if (index.k.keysHeld.KeyW && index.k.keysHeld.KeyS) movingZ = false
+
+                                    if (movingX) {
+                                        if (!movingZ){
+                                            if (index.k.keysHeld.KeyD) {
+                                                impulse.x += cdir * speed;
+                                                impulse.z -= sdir * speed;
+                                            } 
+                                            if (index.k.keysHeld.KeyA) {
+                                                impulse.x -= cdir * speed;
+                                                impulse.z += sdir * speed;
+                                            }
+                                        } else {
+                                            if (index.k.keysHeld.KeyD) {
+                                                impulse.x += cdir * speed * 2;
+                                                impulse.z -= sdir * speed * 2;
+                                            } 
+                                            if (index.k.keysHeld.KeyA) {
+                                                impulse.x -= cdir * speed * 2;
+                                                impulse.z += sdir * speed * 2;
+                                            }
+                                        }
+                                    }
+
+                                    if (movingZ) {
+                                        if (index.k.keysHeld.KeyW) {console.log('hi')
+                                            impulse.x -= sdir * speed;
+                                            impulse.z -= cdir * speed;
+                                        }
+                                        if (index.k.keysHeld.KeyS) {
+                                            impulse.x += sdir * speed;
+                                            impulse.z += cdir * speed;
+                                        }
+                                    }
+
+                                    impulse = player.checkCollision(impulse)
+
+                                    if (impulse.x !== 0 || impulse.z !== 0){
+                                        player.playAnimation('run');
                                     } else {
-                                        if (index.k.keysHeld.KeyD) {
-                                            impulse.x += cdir * speed * 2;
-                                            impulse.z -= sdir * speed * 2;
-                                        } 
-                                        if (index.k.keysHeld.KeyA) {
-                                            impulse.x -= cdir * speed * 2;
-                                            impulse.z += sdir * speed * 2;
-                                        }
+                                        player.playAnimation('Idle');
                                     }
-                                }
 
-                                if (movingZ) {
-                                    if (index.k.keysHeld.KeyW) {console.log('hi')
-                                        impulse.x -= sdir * speed;
-                                        impulse.z -= cdir * speed;
+                                    player.mesh.position.x += impulse.x
+                                    player.mesh.position.z += impulse.z
+
+                                    if (player.dead === true) {
+                                        player.body.setLinvel({x:0,y:0,z:0})
+                                        player.body.setTranslation({x: player.sz, y: player.sy, z: player.sz});
+                                        player.dead = false;
+                                        level.update = true;
                                     }
-                                    if (index.k.keysHeld.KeyS) {
-                                        impulse.x += sdir * speed;
-                                        impulse.z += cdir * speed;
+                                    if(index.k.keysHeld.KeyR && player.dead === false){
+                                        player.dead = true;
                                     }
+                                    
+                                    let quaternion = new THREE.Quaternion();
+                                    quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'XYZ'));
+                        
+                                    let q = player.camera.quaternion;
+                                    
+                                    player.camera.position.set(player.mesh.position.x-10,player.mesh.position.y+10,player.mesh.position.z)
+                                    player.camera.lookAt(player.mesh.position)
+                                    let target = new THREE.Vector3(
+                                        player.mesh.position.x + impulse.x,
+                                        player.mesh.position.y,
+                                        player.mesh.position.z + impulse.z
+                                    );
+                                    if (impulse.x !== 0 || impulse.z !== 0) {
+                                        player.mesh.lookAt(target);
+                                    }
+
+                                    let euler = new THREE.Euler();
+                                    euler.setFromQuaternion(q, 'YXZ');
+                                    player.yaw = euler.y;  
+                                    player.pitch = euler.x;    
+                                    
                                 }
-
-                                impulse = player.checkCollision(impulse)
-
-                                if (impulse.x !== 0 || impulse.z !== 0){
-                                    player.playAnimation('run');
-                                } else {
-                                    player.playAnimation('Idle');
-                                }
-
-                                player.mesh.position.x += impulse.x
-                                player.mesh.position.z += impulse.z
-
-                                if (player.dead === true) {
-                                    player.body.setLinvel({x:0,y:0,z:0})
-                                    player.body.setTranslation({x: player.sz, y: player.sy, z: player.sz});
-                                    player.dead = false;
-                                    level.update = true;
-                                }
-                                if(index.k.keysHeld.KeyR && player.dead === false){
-                                    player.dead = true;
                                 }
                                 
-                                let quaternion = new THREE.Quaternion();
-                                quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'XYZ'));
-                    
-                                let q = player.camera.quaternion;
-                                
-                                player.camera.position.set(player.mesh.position.x-10,player.mesh.position.y+10,player.mesh.position.z)
-                                player.camera.lookAt(player.mesh.position)
-                                let target = new THREE.Vector3(
-                                    player.mesh.position.x + impulse.x,
-                                    player.mesh.position.y,
-                                    player.mesh.position.z + impulse.z
-                                );
-                                if (impulse.x !== 0 || impulse.z !== 0) {
-                                    player.mesh.lookAt(target);
-                                }
-
-                                let euler = new THREE.Euler();
-                                euler.setFromQuaternion(q, 'YXZ');
-                                player.yaw = euler.y;  
-                                player.pitch = euler.x;    
-                                
-                            }
-                            }
-                            
                         return player
                     })({})
 
@@ -1088,7 +1093,16 @@
                                     this.isBlack = false;
                                     this.tillGameStart = true
                                 },
-
+                                fadeIn(){
+                                    this.phase = 'fadeIn'  
+                                    this.hold = 999999
+                                 },
+                                fadeOut(){
+                                    this.phase = 'fadeOut'  
+                                    this.timer = 0
+                                    this.duration = 0
+                                    this.alpha = 0
+                                },
                                 update(delta) {
                                     this.timer += delta;
 
