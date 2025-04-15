@@ -546,6 +546,7 @@
                  let daySetup = true;
                  function play() {
                     if (index.k.keysPressed.KeyO){
+                        console.log('ji')
                         const monologue = document.getElementById("monologue");
                         monologue.currentTime = 53
                     }
@@ -821,25 +822,21 @@
                                 return closest;
                             }
 
-                            function checkFrontObstruction() {
+                            function checkCollision(direction) {
                                 const allOthers = [...out.spartans, ...out.persians].filter(npc => npc.rig.mesh !== rig.mesh);
-                                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(rig.mesh.quaternion).normalize();
                                 const origin = rig.mesh.position.clone();
+                                const forward = new THREE.Vector3(origin.x + direction.x, 0, origin.z + direction.z).applyQuaternion(rig.mesh.quaternion).normalize();
                                 const detectionDistance = 4;
 
                                 for (let npc of allOthers) {
-                                    const toOther = npc.rig.mesh.position.clone().sub(origin);
-                                    const forwardDist = toOther.dot(forward);
-
-                                    if (forwardDist > 0 && forwardDist < detectionDistance) {
-                                        const lateralOffset = toOther.clone().sub(forward.clone().multiplyScalar(forwardDist));
-                                        if (lateralOffset.length() < 1.2) {
+                                    let otherPos = npc.rig.mesh.position.clone();
+                                    if (otherPos.x > forward.x - 4 && otherPos.x < forward.x + 4){
+                                        if (otherPos.z > forward.z - 4 && otherPos.z < forward.z + 4){
                                             return npc.rig;
                                         }
                                     }
                                 }
-
-                                return null;
+                                return false;
                             }
 
                             function update(delta = 1 / 60) {
@@ -852,13 +849,14 @@
                                         return;
                                     }
                                 }
+                                stats.target = findTarget();
 
                                 const targetPos = stats.target.mesh.position;
                                 const distance = rig.mesh.position.distanceTo(targetPos);
                                 const lookAt = new THREE.Vector3(targetPos.x, rig.mesh.position.y, targetPos.z);
                                 rig.mesh.lookAt(lookAt);
 
-                                const blocked = checkFrontObstruction();
+                                blocked = checkCollision();
                                 if (blocked) {
                                     if (blocked === stats.target) {
                                         rig.playAnimation('attack');
@@ -1211,6 +1209,7 @@
                 requestAnimationFrame(draw);
                 index.v.fader.update(1/60)
                 index.v.fader.draw()
+                index.k.update()
             }
 
 
