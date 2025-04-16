@@ -495,17 +495,8 @@
                  }
                 async function battle(){
                     if (daySetup){
-                        index.t.scene.remove(setup.camp_meshes)
-                        for (let y = 0; y < 23; y++) {
-                            for (let x = 0; x < 5; x++) {
-                                await index.f.spawnNPC(x * 3, 0, y * 3-50, 'spartan');
-                            }
-                        }
-                        for (let y = 0; y < 23; y++) {
-                            for (let x = 0; x < 5; x++) {
-                                await index.f.spawnNPC(40+x * 3, 0, y * 3-50, 'persian');
-                            }
-                        }
+                        await index.f.spawnInstancedCrowd(100, 'spartan');
+                        await index.f.spawnInstancedCrowd(100, 'persian');
                     }
                     index.f.player.setPlayer(0,0,0,index.t.camera)
                     index.t.orbits[index.t.camera.orbitNum].enabled = false
@@ -521,7 +512,7 @@
                 function play() {
                     if (index.k.keysPressed.KeyO){
                         const monologue = document.getElementById("monologue");
-                        monologue.currentTime = 111
+                        monologue.currentTime = 53
                     }
                     if (!gameStartPromise) {
                         gameStartPromise = startGame(); // call once, async
@@ -534,9 +525,10 @@
 
                     index.r.world.step();
                     index.t.renderer.render(index.t.scene, index.t.camera);
+                    const frameCount = performance.now(); // use timestamp for staggered updates
 
-                    index.f.spartans.forEach(i => i.update());
-                    index.f.persians.forEach(i => i.update());
+                    for (let npc of index.f.spartans) npc.update(frameCount);
+                    for (let npc of index.f.persians) npc.update(frameCount);
 
 
                     if (index.v.playscene == "camp" && daySetup){
@@ -715,6 +707,25 @@
                         let loader = new FBXLoader()
                         out.spartanModel = null;
                         out.persianModel = null;
+                        // During loadModels
+                        out.loadStaticModel = async function(path) {
+                            const model = await new Promise((res, rej) => new FBXLoader().load(path, res, undefined, rej));
+                            model.traverse(child => {
+                                if (child.isMesh && child.material) {
+                                    child.geometry = child.geometry.clone();
+                                    child.geometry.applyMatrix4(child.matrixWorld);
+
+                                    if (Array.isArray(child.material)) {
+                                        child.material = child.material.map(mat => mat.clone());
+                                    } else {
+                                        child.material = child.material.clone();
+                                    }
+                                }
+                            });
+
+                            return model;
+                        };
+
                         out.loadModels = async function() {
                             const loader = new FBXLoader();
 
@@ -725,223 +736,41 @@
                                 loader.load('assets/achilles.fbx', res, undefined, rej)
                             );
                          };
-                        out.spawnNPC = async function (x, y, z, nation) {
-                            const isSpartan = nation === 'spartan';
-                            const model = isSpartan ? out.spartanModel : out.persianModel;
+                         
+                        out.spawnInstancedCrowd = async function(count, nation = 'spartan') {
+                            const modelPath = nation === 'spartan' ? 'assets/trojan3.fbx' : 'assets/achilles.fbx';
+                            const model = await out.loadStaticModel(modelPath);
 
-                            const base = await model;
-                            const clone = SkeletonUtils.clone(base);
-                            clone.scale.set(0.025, 0.025, 0.025);
+                            let baseMesh;
+                            model.traverse(child => {
+                                if (child.isMesh && !baseMesh) baseMesh = child;
+                            });
 
-                            const wrapper = new THREE.Group();
-                            wrapper.add(clone);
-                            wrapper.position.set(x, y, z);
-                            index.t.scene.add(wrapper);
+                            const instanceCount = count;
+                            const instancedMesh = new THREE.InstancedMesh(
+                                baseMesh.geometry,
+                                baseMesh.material,
+                                instanceCount
+                            );
 
-                            const box = new THREE.Box3().setFromObject(clone);
-                            const center = new THREE.Vector3();
-                            box.getCenter(center);
-                            clone.position.sub(center);
+                            const dummy = new THREE.Object3D();
+                            for (let i = 0; i < instanceCount; i++) {
+                                const x = Math.random() * 200 - 100;
+                                const z = Math.random() * 200 - 100;
+                                const y = 2;
+                                dummy.position.set(x, y, z);
+                                dummy.scale.set(0.025, 0.025, 0.025); // Apply same scale as SkinnedMesh
+                                dummy.rotation.y = Math.random() * Math.PI * 2;
+                                dummy.updateMatrix();
+                                instancedMesh.setMatrixAt(i, dummy.matrix);
 
-                            const mixer = new THREE.AnimationMixer(clone);
-                            const actions = {};
-                            const anims = ['Idle', 'run', 'attack', 'death' ];
+                            }
 
-                            for (let animName of anims) {
-                                const animPath = `assets/animations/${animName === 'attack' ? 'attack1' : animName}.fbx`;
-                                const anim = await new Promise((res, rej) => new FBXLoader().load(animPath, res, undefined, rej));
-                                const clip = anim.animations[0];
-                                const action = mixer.clipAction(clip);
-                                action.setLoop(THREE.LoopRepeat);
-                                actions[animName] = action;
-                                if (animName === 'Idle') action.play();
-                                if (animName === 'death') {
-                                    action.setLoop(THREE.LoopOnce);
-                                    action.clampWhenFinished = true;
-                                }
-                             }
+                            instancedMesh.castShadow = true;
+                            instancedMesh.receiveShadow = true;
+                            index.t.scene.add(instancedMesh);
+                        };
 
-                            const rig = {
-                                mesh: wrapper,
-                                mixer,
-                                actions,
-                                currentAction: '',
-                                dead: false,
-                                sinkingProgress: 0,
-                                playAnimation(name, fadeDuration = 0.3) {
-                                    if (this.currentAction === name || !this.actions[name]) return;
-
-                                    const prevAction = this.actions[this.currentAction];
-                                    const nextAction = this.actions[name];
-
-                                    if (prevAction) {
-                                        nextAction.reset();
-                                        nextAction.play();
-                                        prevAction.crossFadeTo(nextAction, fadeDuration, false);
-                                    } else {
-                                        nextAction.reset().fadeIn(fadeDuration).play();
-                                    }
-
-                                    this.currentAction = name;
-                                },
-                                update(delta = 1 / 60) {
-                                    mixer.update(delta);
-                                }
-                             };
-
-                            const stats = {
-                                target: null,
-                                speed: 0.07,
-                                health: 1,
-                                dead: false,
-                                hitsTaken: 0,
-                                sinking: false
-                             };
-
-
-                            function findTarget() {
-                                const enemies = isSpartan ? out.persians : [...out.spartans];
-
-                                // 👇 If the player is not a Spartan, add them to Persian targets
-                                if (!isSpartan && out.player?.mesh && !out.player.dead) {
-                                    enemies.push({ rig: out.player }); // Wrap player like other NPCs
-                                }
-
-                                let closest = null;
-                                let minDist = Infinity;
-
-                                for (let e of enemies) {
-                                    const dist = e.rig.mesh.position.distanceTo(rig.mesh.position);
-                                    if (dist < minDist) {
-                                        minDist = dist;
-                                        closest = e.rig;
-                                    }
-                                }
-
-                                // Ensure we skip sunken targets
-                                if (closest && closest.mesh.position.y < -3) {
-                                    return undefined;
-                                }
-
-                                return closest;
-                             }
-                            function checkCollision(directionVec) {
-                                const allOthers = [...out.spartans, ...out.persians].filter(npc => npc.rig.mesh !== rig.mesh);
-                                const futurePos = rig.mesh.position.clone().add(directionVec.clone().setLength(1)); // Look 1 unit ahead
-
-                                for (let npc of allOthers) {
-                                    const theirPos = npc.rig.mesh.position;
-                                    if (futurePos.distanceTo(theirPos) < 2) {
-                                        return npc.rig; // Something is in the way
-                                    }
-                                }
-
-                                return false; // All clear
-                             }
-
-
-                            function update(delta = 1 / 60) {
-                                rig.update(delta);
-
-                                // If dead, allow death animation to finish and start sinking
-                                if (rig.dead) {
-                                    if (rig.actions.death && !rig.actions.death.isRunning() && !stats.sinking) {
-                                        stats.sinking = true;
-                                        rig.sinkingProgress = 0;
-                                    }
-
-                                    if (stats.sinking) {
-                                        rig.sinkingProgress += 0.01;
-                                        rig.mesh.position.y -= 0.01;
-                                    }
-
-                                    return;
-                                }
-
-                                // Acquire or validate target
-                                if (!stats.target || stats.target.mesh.position.y < -99 || stats.target.hitsTaken >= 5) {
-                                    stats.target = findTarget();
-                                    if (!stats.target) {
-                                        rig.playAnimation('Idle');
-                                        return;
-                                    }
-                                }
-                                stats.target = findTarget();
-
-                                const targetPos = stats.target.mesh.position;
-                                const distance = rig.mesh.position.distanceTo(targetPos);
-
-                                // Calculate movement direction
-                                let dir = new THREE.Vector3().subVectors(targetPos, rig.mesh.position).normalize();
-                                let proposedMove = dir.clone().multiplyScalar(stats.speed);
-                                const blocked = checkCollision(proposedMove);
-
-                                // Turn toward the target smoothly
-                                const angle = Math.atan2(dir.x, dir.z);
-                                const targetQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
-                                rig.mesh.quaternion.slerp(targetQuat, 0.05);
-
-                                // Handle collisions
-                                if (blocked) {
-                                    if (blocked === stats.target) {
-                                        // Play attack animation
-                                        if (!rig.attackCooldown && !blocked.dead) {
-                                            rig.playAnimation('attack');
-                                            rig.attackCooldown = true;
-
-                                            // Apply delayed damage for animation sync
-                                            setTimeout(() => {
-                                                if (!blocked.dead && blocked !== out.player) {
-                                                    blocked.hitsTaken = (blocked.hitsTaken || 0) + 1;
-
-                                                    if (blocked.hitsTaken >= 5) {
-                                                        blocked.dead = true;
-                                                        blocked.playAnimation?.('death');
-                                                    }
-                                                }
-                                            }, 500); // Match swing timing
-
-                                            // Reset cooldown
-                                            setTimeout(() => {
-                                                rig.attackCooldown = false;
-                                            }, 1200);
-                                        }
-                                    } else {
-                                        rig.playAnimation('Idle');
-                                    }
-                                } else {
-                                    if (distance > 3) {
-                                        rig.mesh.position.add(proposedMove);
-                                        rig.playAnimation('run');
-                                    } else {
-                                        rig.playAnimation('attack'); // In range, might be engaging
-                                    }
-                                }
-
-                                if (!stats.sinking) {
-                                    rig.mesh.position.y = 2; 
-                                }
-                                if (rig.mesh.position.y < -5) {
-                                    index.t.scene.remove(rig.mesh);
-
-                                    // Remove from array
-                                    const list = nation === 'spartan' ? out.spartans : out.persians;
-                                    const indexToRemove = list.findIndex(npc => npc.rig === rig);
-                                    if (indexToRemove !== -1) {
-                                        list.splice(indexToRemove, 1);
-                                    }
-
-                                    return; // Stop update entirely
-                                }
-
-                             }
-
-                            const npc = { rig, update };
-                            (isSpartan ? out.spartans : out.persians).push(npc);
-
-                            return npc;
-
-                         };
 
                         out.player = (function(player){
                             player.setPlayer = async function(x,y,z,camera) {
@@ -1308,28 +1137,28 @@
 
             /*draw*/
             
-                function draw() {
-                    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+            function draw() {
+                ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
 
-                    if (showStartButton) {
-                        drawStartButton();
-                    } else if (index.v.scene === 'title'){
-                        drawTitle();
-                    } else if (index.v.scene === 'play' ){
-                        play();
-                    }
-                    if (index.f.player && index.f.player.enabled) index.f.player.runPlayerPhysics(1/60)
-
-
-                    requestAnimationFrame(draw);
-                    index.v.fader.update(1/60)
-                    index.v.fader.draw()
-                    index.k.update()
+                if (showStartButton) {
+                    drawStartButton();
+                } else if (index.v.scene === 'title'){
+                    drawTitle();
+                } else if (index.v.scene === 'play' ){
+                    play();
                 }
+                if (index.f.player && index.f.player.enabled) index.f.player.runPlayerPhysics(1/60)
 
 
-                draw()
+                requestAnimationFrame(draw);
+                index.v.fader.update(1/60)
+                index.v.fader.draw()
+                index.k.update()
+            }
+
+
+            draw()
         </script>          
     </body>
 </html>
